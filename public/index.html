@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RootMe Talk | Master Languages Through Real-Time Conversations</title>
+  <meta name="description" content="Join live audio & video conversation rooms, practice speaking foreign languages with native speakers and learners worldwide. Free, instant, and interactive.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="app-body">
+  <!-- Dynamic Background Glow Gradients -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <a href="/" class="brand-logo" id="logoLink">
+          <div class="brand-icon">
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+          </div>
+          <div class="brand-text">
+            <span class="brand-title">RootMe<span class="brand-highlight">Talk</span></span>
+            <span class="brand-badge">LIVE</span>
+          </div>
+        </a>
+
+        <div class="online-status-chip">
+          <span class="pulse-dot"></span>
+          <span id="globalOnlineCount">38</span> Online Worldwide
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-icon" id="quickMatchBtn" title="Instant Match Roulette">
+          <span class="btn-emoji">🎲</span>
+          <span class="btn-text">Surprise Match</span>
+        </button>
+
+        <button class="btn btn-primary" id="openCreateRoomBtn">
+          <span class="btn-emoji">➕</span>
+          <span class="btn-text">Create Room</span>
+        </button>
+
+        <button class="btn btn-ghost btn-icon" id="settingsBtn" title="Audio & Video Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+
+        <div class="user-profile-chip" id="profileTrigger" title="Edit Profile & Fluency">
+          <div class="avatar-ring">
+            <span class="user-avatar" id="navAvatar">🦊</span>
+          </div>
+          <div class="user-meta">
+            <span class="user-name" id="navName">Learner</span>
+            <span class="user-streak" title="Daily Speaking Streak">🔥 <span id="navStreak">3</span>d streak</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="main-layout" id="mainContainer">
+    <!-- LOBBY VIEW -->
+    <section class="lobby-view" id="lobbyView">
+      <!-- Hero Banner -->
+      <div class="hero-section">
+        <div class="hero-badge">
+          <span>Open speaking practice • Calm & distraction-free</span>
+        </div>
+        <h1 class="hero-title">
+          Practice speaking freely, <br>
+          <span class="gradient-text">calmly, and together.</span>
+        </h1>
+        <p class="hero-subtitle">
+          Join small rooms, practice conversational fluency with peers, exchange gentle feedback, and speak without anxiety.
+        </p>
+
+        <!-- Stats Bar -->
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-number" id="statsRoomsCount">7</span>
+            <span class="stat-label">Active Rooms</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-number">18+</span>
+            <span class="stat-label">Languages</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-number">P2P</span>
+            <span class="stat-label">WebRTC Voice</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter & Search Controls -->
+      <div class="filter-controls-card">
+        <!-- Language Selector Carousel / Tabs -->
+        <div class="language-tabs-wrapper">
+          <div class="language-tabs" id="languageTabs">
+            <button class="lang-tab active" data-lang="all">
+              <span class="lang-flag">🌐</span>
+              <span class="lang-name">All Languages</span>
+            </button>
+            <button class="lang-tab" data-lang="English">
+              <span class="lang-flag">🇬🇧</span>
+              <span class="lang-name">English</span>
+            </button>
+            <button class="lang-tab" data-lang="Spanish">
+              <span class="lang-flag">🇪🇸</span>
+              <span class="lang-name">Spanish</span>
+            </button>
+            <button class="lang-tab" data-lang="French">
+              <span class="lang-flag">🇫🇷</span>
+              <span class="lang-name">French</span>
+            </button>
+            <button class="lang-tab" data-lang="Japanese">
+              <span class="lang-flag">🇯🇵</span>
+              <span class="lang-name">Japanese</span>
+            </button>
+            <button class="lang-tab" data-lang="German">
+              <span class="lang-flag">🇩🇪</span>
+              <span class="lang-name">German</span>
+            </button>
+            <button class="lang-tab" data-lang="Korean">
+              <span class="lang-flag">🇰🇷</span>
+              <span class="lang-name">Korean</span>
+            </button>
+            <button class="lang-tab" data-lang="Mandarin">
+              <span class="lang-flag">🇨🇳</span>
+              <span class="lang-name">Mandarin</span>
+            </button>
+            <button class="lang-tab" data-lang="Arabic">
+              <span class="lang-flag">🇸🇦</span>
+              <span class="lang-name">Arabic</span>
+            </button>
+            <button class="lang-tab" data-lang="Italian">
+              <span class="lang-flag">🇮🇹</span>
+              <span class="lang-name">Italian</span>
+            </button>
+            <button class="lang-tab" data-lang="Portuguese">
+              <span class="lang-flag">🇧🇷</span>
+              <span class="lang-name">Portuguese</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Secondary Filters: Search, Level, Topic, Seat Filter -->
+        <div class="secondary-filters">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search by room title, topic, or keyword...">
+            <button class="search-clear-btn" id="searchClearBtn" style="display: none;">✕</button>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="levelFilter">Level:</label>
+            <select id="levelFilter" class="custom-select">
+              <option value="all">All Levels</option>
+              <option value="any">Any Level / Open</option>
+              <option value="beginner">Beginner (A1 - A2)</option>
+              <option value="intermediate">Intermediate (B1 - B2)</option>
+              <option value="advanced">Advanced (C1 - C2)</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="topicFilter">Topic:</label>
+            <select id="topicFilter" class="custom-select">
+              <option value="all">All Topics</option>
+              <option value="casual">Casual & Lifestyle</option>
+              <option value="exam">IELTS / TOEFL Prep</option>
+              <option value="tech">Career & Tech</option>
+              <option value="culture">Culture & Entertainment</option>
+              <option value="debate">Philosophy & Debate</option>
+            </select>
+          </div>
+
+          <div class="toggle-filter-wrap">
+            <label class="toggle-label">
+              <input type="checkbox" id="openSeatsToggle">
+              <span class="toggle-slider"></span>
+              <span class="toggle-text">Open Seats Only</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Rooms Grid -->
+      <div class="rooms-container">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <h2 class="section-title">Active Conversation Rooms</h2>
+            <span class="rooms-counter-pill" id="matchedRoomsCount">7 rooms live</span>
+          </div>
+          <button class="btn btn-sm btn-ghost" id="refreshRoomsBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        <div class="rooms-grid" id="roomsGrid">
+          <!-- Room cards will be rendered dynamically by app.js -->
+        </div>
+
+        <div class="empty-rooms-state" id="emptyRoomsState" style="display: none;">
+          <div class="empty-icon">🔍</div>
+          <h3 class="empty-title">No rooms match your filters</h3>
+          <p class="empty-desc">Try clearing your filters or create your own room for this language!</p>
+          <button class="btn btn-primary" id="emptyCreateBtn">Create This Room</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIVE IN-ROOM VIEW -->
+    <section class="in-room-view" id="inRoomView" style="display: none;">
+      <!-- Room Top Bar -->
+      <div class="room-topbar">
+        <div class="room-info-cluster">
+          <button class="btn btn-ghost btn-sm btn-back" id="leaveRoomBtnTop" title="Leave Room">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Lobby</span>
+          </button>
+
+          <div class="room-details-text">
+            <div class="room-title-row">
+              <span class="room-flag-badge" id="activeRoomFlag">🇬🇧</span>
+              <h2 class="active-room-title" id="activeRoomTitle">Cozy Coffee & Travel Talk</h2>
+              <span class="badge badge-level" id="activeRoomLevel">Intermediate B1-B2</span>
+              <span class="badge badge-topic" id="activeRoomTopic">Casual</span>
+            </div>
+            <div class="room-sub-meta">
+              <span class="host-pill">Host: <strong id="activeRoomHost">Liam</strong></span>
+              <span class="meta-dot">•</span>
+              <span class="capacity-pill"><span id="activeRoomOccupancy">3</span>/<span id="activeRoomCapacity">6</span> Seats</span>
+              <span class="meta-dot">•</span>
+              <span class="lock-pill" id="activeRoomLockStatus">🔓 Public</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Room Header Utilities -->
+        <div class="room-topbar-tools">
+          <!-- Speaking Turn Timer -->
+          <div class="speaking-timer-pill" id="speakingTimerWidget" title="Speaking Turn Timer">
+            <span class="timer-icon">⏱️</span>
+            <span class="timer-display" id="timerClock">01:30</span>
+            <button class="timer-action-btn" id="timerToggleBtn" title="Start/Pause">▶</button>
+            <button class="timer-action-btn" id="timerResetBtn" title="Reset">↺</button>
+          </div>
+
+          <!-- Feature Panel Tabs -->
+          <div class="tool-tabs-strip">
+            <button class="tool-tab-btn active" data-panel="stage" id="tabStageBtn">
+              <span>🎙️ Voice Stage</span>
+            </button>
+            <button class="tool-tab-btn" data-panel="aicoach" id="tabAICoachBtn">
+              <span>🤖 Live AI Coach</span>
+            </button>
+            <button class="tool-tab-btn" data-panel="notebook" id="tabNotebookBtn">
+              <span>📖 Notebook</span>
+            </button>
+            <button class="tool-tab-btn" data-panel="icebreaker" id="tabIcebreakerBtn">
+              <span>💡 Icebreakers</span>
+            </button>
+            <button class="tool-tab-btn" data-panel="whiteboard" id="tabWhiteboardBtn">
+              <span>🎨 Whiteboard</span>
+            </button>
+          </div>
+
+          <!-- Live AI Speech Coach Toggle Button -->
+          <button class="btn btn-secondary btn-sm" id="aiCoachToggleBtn" title="Start real-time live AI speech transcription & instant grammar/phrasing coach">
+            <span class="coach-status-dot" id="aiCoachStatusDot"></span>
+            <span id="aiCoachBtnLabel">🤖 AI Coach</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Room Main Split Layout -->
+      <div class="room-stage-container">
+        <!-- Center Stage Area -->
+        <div class="stage-main-area">
+          <!-- VIEW 1: PARTICIPANTS TILES STAGE -->
+          <div class="stage-subpanel active" id="panelStage">
+            <div class="participants-grid" id="participantsGrid">
+              <!-- Dynamically rendered participant cards with WebRTC video or animated audio avatar -->
+            </div>
+          </div>
+
+          <!-- VIEW 2: ICEBREAKER / CONVERSATION PROMPTS -->
+          <div class="stage-subpanel" id="panelIcebreaker" style="display: none;">
+            <div class="interactive-panel-card">
+              <div class="panel-header-row">
+                <div>
+                  <h3 class="panel-heading">💡 Conversation Starters & Debate Topics</h3>
+                  <p class="panel-sub">Never run out of things to talk about! Click to draw engaging cards.</p>
+                </div>
+                <div class="icebreaker-actions">
+                  <select id="icebreakerCategorySelect" class="custom-select custom-select-sm">
+                    <option value="fun">🎉 Fun & Casual</option>
+                    <option value="travel">✈️ Travel & Culture</option>
+                    <option value="deep">🧠 Deep & Philosophical</option>
+                    <option value="career">💼 Career & Ambition</option>
+                    <option value="debate">⚖️ Friendly Debate</option>
+                    <option value="grammar">🧩 Grammar Challenge</option>
+                  </select>
+                  <button class="btn btn-primary btn-sm" id="drawCardBtn">
+                    <span>Draw New Card 🎲</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="icebreaker-display-card" id="icebreakerDisplayCard">
+                <div class="icebreaker-category-tag" id="icebreakerTag">🎉 Fun & Casual</div>
+                <h2 class="icebreaker-prompt-text" id="icebreakerText">
+                  "If you could teleport to any city in the world for just 3 hours tonight for dinner, where would you go and what would you eat?"
+                </h2>
+                <div class="icebreaker-followups" id="icebreakerFollowups">
+                  <span class="followup-title">Follow-up questions to ask your partners:</span>
+                  <ul>
+                    <li>Who would you take with you?</li>
+                    <li>What is the first street food you'd try?</li>
+                  </ul>
+                </div>
+                <div class="icebreaker-footer-bar">
+                  <button class="btn btn-ghost btn-sm" id="speakIcebreakerBtn">
+                    <span>🔊 Read Aloud</span>
+                  </button>
+                  <button class="btn btn-ghost btn-sm" id="copyIcebreakerBtn">
+                    <span>📋 Copy to Chat</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW 2: LIVE AI SPEECH COACH & TRANSCRIBER HUD -->
+          <div class="stage-subpanel" id="panelAICoach" style="display: none;">
+            <div class="interactive-panel-card ai-coach-panel">
+              <div class="panel-header-row">
+                <div class="ai-coach-heading-wrap">
+                  <div class="coach-live-indicator" id="coachLiveIndicator">
+                    <span class="coach-pulse-dot"></span>
+                    <span id="coachStatusText">AI Coach Inactive — Click "Start AI Coach" to listen</span>
+                  </div>
+                  <h3 class="panel-heading">Live Speech Transcriber & Grammar Coach</h3>
+                </div>
+                <div class="ai-coach-actions">
+                  <button class="btn btn-primary btn-sm" id="coachStartStopBtn">
+                    <span>Start AI Coach 🎙️</span>
+                  </button>
+                  <button class="btn btn-ghost btn-sm" id="coachClearBtn">Clear</button>
+                </div>
+              </div>
+
+              <div class="ai-coach-split-hud">
+                <!-- Left Column: Live Speech Stream -->
+                <div class="ai-transcript-box">
+                  <div class="hud-box-header">
+                    <span class="hud-box-title">Live Spoken Transcript</span>
+                    <span class="hud-box-badge" id="coachLangBadge">en-US</span>
+                  </div>
+                  <div class="transcript-feed" id="coachTranscriptFeed">
+                    <div class="transcript-placeholder" id="transcriptPlaceholder">
+                      Speak into your microphone. Your spoken words will stream here live and the AI will analyze grammar and natural phrasing.
+                    </div>
+                  </div>
+                  <div class="interim-stream-bar" id="coachInterimStream"></div>
+                </div>
+
+                <!-- Right Column: Real-Time Corrections & Better Phrasing -->
+                <div class="ai-feedback-box">
+                  <div class="hud-box-header">
+                    <span class="hud-box-title">Instant Phrasing & Grammar Corrections</span>
+                    <span class="hud-box-badge">AI Assistant</span>
+                  </div>
+                  <div class="feedback-cards-feed" id="coachFeedbackFeed">
+                    <div class="feedback-placeholder" id="feedbackPlaceholder">
+                      When you speak, the AI will detect awkward phrasing or grammar slips and suggest native corrections right here.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW 3: CORNELL DIGITAL PLANNER TABLET NOTEBOOK -->
+          <div class="stage-subpanel" id="panelNotebook" style="display: none;">
+            <div class="planner-tablet-wrapper">
+              <!-- Physical Tablet Screen Frame -->
+              <div class="planner-tablet-body">
+                <!-- Gridded Paper Page -->
+                <div class="planner-paper-sheet">
+                  <!-- Header: Subject & Date -->
+                  <div class="planner-top-header">
+                    <div class="planner-subject-box">
+                      <span class="planner-title-handwritten" id="notebookCurrentPageHeading">NOTE-TAKING</span>
+                      <span class="planner-page-badge" id="nbPageNumber">PAGE 1 / 6</span>
+                    </div>
+                    <div class="planner-date-box">
+                      <span class="planner-date-label" id="notebookHeaderDate">OCTOBER 5, 2026</span>
+                      <div class="planner-sheet-actions">
+                        <button class="planner-action-btn" id="notebookAddPageBtn" title="Add a new page">＋ New Page</button>
+                        <button class="planner-action-btn" id="notebookDeletePageBtn" title="Delete current page">🗑️</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Integrated Pen Writing Bar -->
+                  <div class="planner-pen-bar">
+                    <div class="planner-pen-indicator">
+                      <span class="pen-dot"></span>
+                      <span>PEN</span>
+                    </div>
+                    <input type="text" id="nbTermInput" class="planner-line-input pen-cue-input" placeholder="Keyword / Cue (e.g. In a nutshell)...">
+                    <input type="text" id="nbMeaningInput" class="planner-line-input pen-note-input" placeholder="Note / Definition / Nuance...">
+                    <input type="text" id="nbExampleInput" class="planner-line-input pen-example-input" placeholder="Usage sentence in conversation...">
+                    <button type="button" class="planner-ai-btn" id="nbAIExplainBtn" title="Consult AI dictionary">✨ AI Assist</button>
+                    <button type="button" class="planner-btn-write" id="nbSaveNoteBtn">Write ✍️</button>
+                  </div>
+
+                  <div class="ai-explain-indicator" id="nbAILoading" style="display: none;">
+                    <span class="spinner-dot"></span> Consulting linguistic AI dictionary...
+                  </div>
+
+                  <!-- Cornell 2-Column Grid -->
+                  <div class="cornell-main-grid">
+                    <!-- Left Column: CUE & QUESTIONS -->
+                    <div class="cornell-cue-column">
+                      <div class="cornell-section-banner">
+                        <span class="highlighter-peach">CUE</span>
+                      </div>
+
+                      <!-- Hand-drawn Style Sketch Diagram -->
+                      <div class="cornell-diagram-card">
+                        <div class="diagram-sketch-box">
+                          <div class="sketch-top-arrow">⤴ CUE</div>
+                          <div class="sketch-rect-outer">
+                            <div class="sketch-rect-inner">
+                              <span class="sketch-circle-note">NOTE</span>
+                            </div>
+                          </div>
+                          <div class="sketch-bottom-arrow">⇣ SUMMARY</div>
+                        </div>
+                      </div>
+
+                      <!-- Vocabulary Cues List -->
+                      <div class="cues-feed-container" id="notebookCuesList">
+                        <!-- Populated dynamically with cue terms -->
+                      </div>
+
+                      <div class="cornell-questions-container">
+                        <div class="questions-banner">
+                          <span class="highlighter-peach-sub">QUESTIONS:</span>
+                        </div>
+                        <ul class="cue-prompt-bullets">
+                          <li>• Why do you take notes?</li>
+                          <li>• What do you hope to get from your partner?</li>
+                          <li>• How can you use this idiom tonight?</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <!-- Vertical Dividing Line -->
+                    <div class="cornell-divider-line"></div>
+
+                    <!-- Right Column: NOTES & MAIN CONTENT -->
+                    <div class="cornell-notes-column" id="notebookNotesContainer">
+                      <!-- Rendered notes with peach/sage highlighters on ruled gridded paper -->
+                    </div>
+                  </div>
+
+                  <!-- Bottom Full-Width Row: SUMMARY -->
+                  <div class="cornell-summary-container">
+                    <div class="summary-banner">
+                      <span class="highlighter-sage">SUMMARY</span>
+                      <span class="summary-sub-hint">CREATE NOTES YOU WILL USE!</span>
+                    </div>
+                    <div class="summary-editable-text" id="plannerSummaryText" contenteditable="true" spellcheck="false">
+                      Overall, good speaking notes capture both main ideas and idioms. The main thing to remember is that active conversational notes help you speak with natural rhythm!
+                    </div>
+                    <div class="planner-footer-bar">
+                      <span class="planner-footer-watermark">ROOTME TALK • UPLIFTING PLANNER</span>
+                      <div class="planner-navigation-group">
+                        <button class="planner-nav-arrow" id="nbPrevPageBtn" title="Previous page">‹ Prev</button>
+                        <button class="planner-nav-arrow" id="nbNextPageBtn" title="Next page">Next ›</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right Edge Vertical Numbered Sticky Tabs (1 to 12) from the reference image -->
+                <div class="planner-vertical-tabs" id="notebookPageTabs">
+                  <!-- Dynamically rendered tabs 1, 2, 3... in pastel hues -->
+                </div>
+              </div>
+
+              <!-- Stylus (Apple Pencil) resting beside the tablet -->
+              <div class="planner-stylus-wrap">
+                <div class="stylus-pencil">
+                  <div class="stylus-tip"></div>
+                  <div class="stylus-shaft">
+                    <span class="stylus-label">ROOTME TALK</span>
+                  </div>
+                  <div class="stylus-end"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW 4: COLLABORATIVE WHITEBOARD -->
+          <div class="stage-subpanel" id="panelWhiteboard" style="display: none;">
+            <div class="interactive-panel-card whiteboard-panel">
+              <div class="whiteboard-toolbar">
+                <div class="toolbar-tools">
+                  <button class="wb-tool-btn active" data-tool="brush" id="wbBrushBtn" title="Brush">🖌️</button>
+                  <button class="wb-tool-btn" data-tool="eraser" id="wbEraserBtn" title="Eraser">🧹</button>
+                  <div class="color-palette">
+                    <button class="color-dot active" style="background: #ffffff;" data-color="#ffffff" title="White"></button>
+                    <button class="color-dot" style="background: #e4e4e7;" data-color="#e4e4e7" title="Light Gray"></button>
+                    <button class="color-dot" style="background: #a1a1aa;" data-color="#a1a1aa" title="Medium Gray"></button>
+                    <button class="color-dot" style="background: #71717a;" data-color="#71717a" title="Dark Gray"></button>
+                    <button class="color-dot" style="background: #3f3f46;" data-color="#3f3f46" title="Charcoal"></button>
+                    <button class="color-dot" style="background: #18181b;" data-color="#18181b" title="Black"></button>
+                  </div>
+                  <input type="range" id="wbLineWidth" min="2" max="24" value="4" class="custom-slider" title="Stroke size">
+                </div>
+                <div class="toolbar-actions">
+                  <button class="btn btn-ghost btn-sm" id="wbClearBtn">Clear Canvas</button>
+                </div>
+              </div>
+              <div class="canvas-wrap">
+                <canvas id="whiteboardCanvas" width="900" height="500"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- In-Room Side Chat Drawer -->
+        <aside class="room-chat-drawer" id="chatDrawer">
+          <div class="chat-drawer-header">
+            <div class="chat-title-wrap">
+              <span class="chat-icon">💬</span>
+              <span class="chat-title">Room Chat</span>
+            </div>
+            <button class="chat-mode-toggle" id="correctionModeToggle" title="Toggle Correction Mode: Format messages as helpful language feedback">
+              <span class="mode-bullet"></span>
+              <span class="mode-text">Feedback Mode</span>
+            </button>
+          </div>
+
+          <!-- Quick Suggestion Chips for Foreign Learners -->
+          <div class="quick-chips-bar">
+            <button class="quick-chip" data-msg="Could you please repeat that? 🔄">Repeat?</button>
+            <button class="quick-chip" data-msg="How do you spell that word? ✍️">Spelling?</button>
+            <button class="quick-chip" data-msg="Could you speak a little slower? 🐢">Slower?</button>
+            <button class="quick-chip" data-msg="Spot on! Perfect pronunciation 🎯">Great! 🎯</button>
+          </div>
+
+          <!-- Messages Stream -->
+          <div class="chat-messages-container" id="chatMessagesContainer">
+            <!-- Messages rendered dynamically -->
+          </div>
+
+          <!-- Correction Input Fields (shown when Correction Mode is active) -->
+          <div class="correction-composer" id="correctionComposer" style="display: none;">
+            <div class="correction-header">
+              <span>✍️ Suggest Language Correction</span>
+            </div>
+            <input type="text" id="correctionOriginalInput" class="custom-input custom-input-sm" placeholder="Original phrase (what was said)...">
+            <input type="text" id="correctionBetterInput" class="custom-input custom-input-sm" placeholder="Better / Natural phrasing...">
+          </div>
+
+          <!-- Chat Input Bar -->
+          <form class="chat-input-bar" id="chatForm">
+            <input type="text" id="chatTextInput" class="chat-input" placeholder="Type a message or share a word..." autocomplete="off">
+            <button type="submit" class="chat-send-btn" id="chatSendBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+        </aside>
+      </div>
+
+      <!-- In-Room Bottom Control Dock -->
+      <footer class="room-bottom-dock">
+        <div class="dock-container">
+          <!-- Audio / Mic Control -->
+          <button class="dock-btn" id="dockMicBtn" title="Toggle Microphone (M)">
+            <div class="dock-btn-icon">
+              <svg id="iconMicOn" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <svg id="iconMicOff" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </div>
+            <span class="dock-label" id="dockMicLabel">Mic On</span>
+          </button>
+
+          <!-- Camera Video Control -->
+          <button class="dock-btn" id="dockVideoBtn" title="Toggle Camera (V)">
+            <div class="dock-btn-icon">
+              <svg id="iconVideoOn" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+              </svg>
+              <svg id="iconVideoOff" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"></path>
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </div>
+            <span class="dock-label" id="dockVideoLabel">Camera Off</span>
+          </button>
+
+
+          <!-- Deafen Incoming Audio -->
+          <button class="dock-btn" id="dockDeafenBtn" title="Deafen / Mute Room Speakers">
+            <div class="dock-btn-icon">
+              <svg id="iconDeafenOff" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+              <svg id="iconDeafenOn" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+              </svg>
+            </div>
+            <span class="dock-label" id="dockDeafenLabel">Deafen</span>
+          </button>
+
+          <div class="dock-separator"></div>
+
+          <!-- Quick Reaction Trigger Buttons -->
+          <div class="dock-reactions-group">
+            <button class="reaction-pop-btn" data-emoji="👏" title="Applause">👏</button>
+            <button class="reaction-pop-btn" data-emoji="❤️" title="Love it">❤️</button>
+            <button class="reaction-pop-btn" data-emoji="💡" title="Great Idea">💡</button>
+            <button class="reaction-pop-btn" data-emoji="🔥" title="Awesome">🔥</button>
+            <button class="reaction-pop-btn" data-emoji="😂" title="Laugh">😂</button>
+            <button class="reaction-pop-btn" data-emoji="🎯" title="Spot on">🎯</button>
+          </div>
+
+          <div class="dock-separator"></div>
+
+          <!-- Toggle Chat Drawer Button -->
+          <button class="dock-btn dock-btn-chat active" id="dockChatToggleBtn" title="Toggle Chat Panel">
+            <div class="dock-btn-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <span class="dock-label">Chat</span>
+          </button>
+
+          <!-- Leave Room Button -->
+          <button class="dock-btn dock-btn-leave" id="dockLeaveBtn" title="Leave Conversation">
+            <div class="dock-btn-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </div>
+            <span class="dock-label">Leave</span>
+          </button>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <!-- MODAL: CREATE ROOM -->
+  <dialog class="custom-dialog" id="createRoomModal">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <span class="dialog-icon">🎙️</span>
+          <div>
+            <h2 class="dialog-title">Create Conversation Room</h2>
+            <p class="dialog-sub">Start an instant live room for any language or topic.</p>
+          </div>
+        </div>
+        <button class="dialog-close-btn" id="closeCreateRoomModalBtn">✕</button>
+      </div>
+
+      <form id="createRoomForm" class="dialog-body-form">
+        <div class="form-group">
+          <label class="form-label" for="roomTitleInput">Room Title <span class="required">*</span></label>
+          <input type="text" id="roomTitleInput" class="custom-input" placeholder="e.g. Chill English & Travel Stories" required maxlength="60">
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label" for="roomLangSelect">Language <span class="required">*</span></label>
+            <select id="roomLangSelect" class="custom-select" required>
+              <option value="English" data-flag="🇬🇧">🇬🇧 English</option>
+              <option value="Spanish" data-flag="🇪🇸">🇪🇸 Spanish</option>
+              <option value="French" data-flag="🇫🇷">🇫🇷 French</option>
+              <option value="Japanese" data-flag="🇯🇵">🇯🇵 Japanese</option>
+              <option value="German" data-flag="🇩🇪">🇩🇪 German</option>
+              <option value="Korean" data-flag="🇰🇷">🇰🇷 Korean</option>
+              <option value="Mandarin" data-flag="🇨🇳">🇨🇳 Mandarin</option>
+              <option value="Arabic" data-flag="🇸🇦">🇸🇦 Arabic</option>
+              <option value="Italian" data-flag="🇮🇹">🇮🇹 Italian</option>
+              <option value="Portuguese" data-flag="🇧🇷">🇧🇷 Portuguese</option>
+              <option value="Russian" data-flag="🇷🇺">🇷🇺 Russian</option>
+              <option value="Turkish" data-flag="🇹🇷">🇹🇷 Turkish</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="roomLevelSelect">Target Proficiency <span class="required">*</span></label>
+            <select id="roomLevelSelect" class="custom-select" required>
+              <option value="Any Level" data-code="any">Any Level (All Welcome)</option>
+              <option value="Beginner A1-A2" data-code="beginner">Beginner (A1 - A2)</option>
+              <option value="Intermediate B1-B2" data-code="intermediate" selected>Intermediate (B1 - B2)</option>
+              <option value="Advanced C1-C2" data-code="advanced">Advanced (C1 - C2)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label" for="roomTopicSelect">Category Topic</label>
+            <select id="roomTopicSelect" class="custom-select">
+              <option value="Casual & Lifestyle" data-key="casual">☕ Casual & Lifestyle</option>
+              <option value="IELTS / TOEFL Exam" data-key="exam">🎯 IELTS / Exam Prep</option>
+              <option value="Career & Tech" data-key="tech">💻 Career & Tech</option>
+              <option value="Culture & Entertainment" data-key="culture">🎭 Culture & Entertainment</option>
+              <option value="Philosophy & Debate" data-key="debate">🧠 Philosophy & Debate</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="roomCapacitySelect">Max Capacity</label>
+            <select id="roomCapacitySelect" class="custom-select">
+              <option value="2">2 People (1-on-1 Intimate)</option>
+              <option value="4">4 People (Small Group)</option>
+              <option value="6" selected>6 People (Balanced)</option>
+              <option value="8">8 People (Lively Group)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-container">
+            <input type="checkbox" id="roomPrivateCheckbox">
+            <span class="checkmark"></span>
+            <span class="checkbox-label-text">Lock room with a passcode (Private Room)</span>
+          </label>
+        </div>
+
+        <div class="form-group" id="roomPasswordGroup" style="display: none;">
+          <label class="form-label" for="roomPasswordInput">Room Passcode</label>
+          <input type="password" id="roomPasswordInput" class="custom-input" placeholder="Enter a 4-digit code...">
+        </div>
+
+        <div class="dialog-footer">
+          <button type="button" class="btn btn-ghost" id="cancelCreateRoomBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitCreateRoomBtn">Launch Room 🚀</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- MODAL: USER PROFILE & FLUENCY -->
+  <dialog class="custom-dialog" id="profileModal">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <span class="dialog-icon">👤</span>
+          <div>
+            <h2 class="dialog-title">Learner Profile</h2>
+            <p class="dialog-sub">Customize your display name, avatar, and native languages.</p>
+          </div>
+        </div>
+        <button class="dialog-close-btn" id="closeProfileModalBtn">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <!-- Photo Upload & Avatar Section -->
+        <div class="profile-section">
+          <label class="form-label">Profile Photo</label>
+          <div class="avatar-photo-upload-container">
+            <div class="avatar-photo-preview-wrap">
+              <div class="avatar-photo-preview" id="avatarPhotoPreview">🦊</div>
+              <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
+            </div>
+            <div class="avatar-upload-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="triggerPhotoUploadBtn">
+                <span>📷 Upload Photo</span>
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" id="removePhotoBtn" style="display: none;">
+                <span>Remove Photo</span>
+              </button>
+              <span class="photo-upload-hint">Upload JPG, PNG, or WebP. Or choose a minimalist avatar below:</span>
+            </div>
+          </div>
+
+          <label class="form-label" style="margin-top: 14px;">Or Choose Default Icon</label>
+          <div class="avatar-selection-grid" id="avatarPickerGrid">
+            <button type="button" class="avatar-choice active" data-avatar="🦊">🦊</button>
+            <button type="button" class="avatar-choice" data-avatar="🦁">🦁</button>
+            <button type="button" class="avatar-choice" data-avatar="🐼">🐼</button>
+            <button type="button" class="avatar-choice" data-avatar="🦉">🦉</button>
+            <button type="button" class="avatar-choice" data-avatar="🐨">🐨</button>
+            <button type="button" class="avatar-choice" data-avatar="🦄">🦄</button>
+            <button type="button" class="avatar-choice" data-avatar="🧑‍💻">🧑‍💻</button>
+            <button type="button" class="avatar-choice" data-avatar="👩‍🎨">👩‍🎨</button>
+            <button type="button" class="avatar-choice" data-avatar="🧑‍🚀">🧑‍🚀</button>
+            <button type="button" class="avatar-choice" data-avatar="🧙‍♂️">🧙‍♂️</button>
+            <button type="button" class="avatar-choice" data-avatar="🥷">🥷</button>
+            <button type="button" class="avatar-choice" data-avatar="🦸‍♀️">🦸‍♀️</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="profileNameInput">Display Name</label>
+          <input type="text" id="profileNameInput" class="custom-input" placeholder="Your name or nickname..." maxlength="25">
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label" for="profileNativeSelect">Native Language</label>
+            <select id="profileNativeSelect" class="custom-select">
+              <option value="English">English</option>
+              <option value="Spanish">Spanish</option>
+              <option value="French">French</option>
+              <option value="Japanese">Japanese</option>
+              <option value="German">German</option>
+              <option value="Korean">Korean</option>
+              <option value="Mandarin">Mandarin</option>
+              <option value="Arabic">Arabic</option>
+              <option value="Hindi">Hindi</option>
+              <option value="Portuguese">Portuguese</option>
+              <option value="Russian">Russian</option>
+              <option value="Italian">Italian</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="profileTargetSelect">Target Language</label>
+            <select id="profileTargetSelect" class="custom-select">
+              <option value="English">English</option>
+              <option value="Spanish" selected>Spanish</option>
+              <option value="French">French</option>
+              <option value="Japanese">Japanese</option>
+              <option value="German">German</option>
+              <option value="Korean">Korean</option>
+              <option value="Mandarin">Mandarin</option>
+              <option value="Arabic">Arabic</option>
+              <option value="Italian">Italian</option>
+              <option value="Portuguese">Portuguese</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Practice Stats Card -->
+        <div class="profile-stats-card">
+          <div class="pstat-item">
+            <span class="pstat-value" id="profileStreakVal">🔥 3 Days</span>
+            <span class="pstat-title">Speaking Streak</span>
+          </div>
+          <div class="pstat-item">
+            <span class="pstat-value" id="profileTimeVal">⏱️ 45 Mins</span>
+            <span class="pstat-title">Spoken This Week</span>
+          </div>
+          <div class="pstat-item">
+            <span class="pstat-value" id="profileRoomsVal">🏆 12 Rooms</span>
+            <span class="pstat-title">Conversations</span>
+          </div>
+        </div>
+
+        <div class="profile-notebook-shortcut" style="margin-top: 10px;">
+          <button type="button" class="btn btn-secondary w-100" id="openNotebookFromProfileBtn">
+            <span>📖 Open My Language Notebook</span>
+          </button>
+        </div>
+
+        <div class="dialog-footer">
+          <button type="button" class="btn btn-primary" id="saveProfileBtn">Save Profile</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL: AUDIO & VIDEO SETTINGS + TEST METER -->
+  <dialog class="custom-dialog" id="settingsModal">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <span class="dialog-icon">⚙️</span>
+          <div>
+            <h2 class="dialog-title">Audio & Video Settings</h2>
+            <p class="dialog-sub">Test your microphone and camera before or during calls.</p>
+          </div>
+        </div>
+        <button class="dialog-close-btn" id="closeSettingsModalBtn">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="form-group">
+          <label class="form-label">Microphone Input</label>
+          <select id="micDeviceSelect" class="custom-select">
+            <option value="default">Default System Microphone</option>
+          </select>
+        </div>
+
+        <!-- Real-time Mic Test Meter -->
+        <div class="mic-test-section">
+          <div class="mic-test-header">
+            <span class="mic-test-label">Mic Live Volume Level:</span>
+            <button class="btn btn-sm btn-ghost" id="startMicTestBtn">Test Microphone</button>
+          </div>
+          <div class="mic-meter-bar-track">
+            <div class="mic-meter-bar-fill" id="micMeterFill" style="width: 0%;"></div>
+          </div>
+          <p class="mic-meter-hint">Speak into your mic. The green bar will jump to show input detection.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Camera Video Device</label>
+          <select id="cameraDeviceSelect" class="custom-select">
+            <option value="default">Default Web Camera</option>
+          </select>
+        </div>
+
+        <!-- OpenAI API Key for AI Explanations and Speech Analysis -->
+        <div class="form-group">
+          <label class="form-label" for="openAIKeyInput">OpenAI API Key (Optional)</label>
+          <input type="password" id="openAIKeyInput" class="custom-input" placeholder="sk-...">
+          <p class="mic-meter-hint">Add your key for GPT-4o-mini powered dictionary and live speech feedback (optional; built-in linguistic rules work without it).</p>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-container">
+            <input type="checkbox" id="noiseSuppressionToggle" checked>
+            <span class="checkmark"></span>
+            <span class="checkbox-label-text">Enable Browser Noise Suppression & Echo Cancellation</span>
+          </label>
+        </div>
+
+        <div class="dialog-footer">
+          <button type="button" class="btn btn-primary" id="closeSettingsSaveBtn">Done</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL: ENTER ROOM PASSWORD -->
+  <dialog class="custom-dialog custom-dialog-sm" id="passwordModal">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <span class="dialog-icon">🔒</span>
+          <div>
+            <h2 class="dialog-title">Private Room Passcode</h2>
+            <p class="dialog-sub">This room requires a passcode to enter.</p>
+          </div>
+        </div>
+        <button class="dialog-close-btn" id="closePasswordModalBtn">✕</button>
+      </div>
+
+      <form id="passwordForm" class="dialog-body-form">
+        <div class="form-group">
+          <input type="password" id="joinPasswordInput" class="custom-input" placeholder="Enter room passcode..." required autofocus>
+          <p class="input-error-msg" id="passwordErrorMsg" style="display: none;">Incorrect passcode. Please try again.</p>
+        </div>
+        <div class="dialog-footer">
+          <button type="button" class="btn btn-ghost" id="cancelPasswordBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Join Room</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- MODAL: STANDALONE NOTEBOOK DIALOG (Accessible from Profile / Lobby) -->
+  <dialog class="custom-dialog custom-dialog-lg" id="standaloneNotebookModal">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div class="dialog-title-group">
+          <span class="dialog-icon">📖</span>
+          <div>
+            <h2 class="dialog-title">My Language Notebook</h2>
+            <p class="dialog-sub">Your personal vocabulary, grammar notes, and saved corrections.</p>
+          </div>
+        </div>
+        <button class="dialog-close-btn" id="closeStandaloneNotebookBtn">✕</button>
+      </div>
+
+      <div class="dialog-body" id="standaloneNotebookBody">
+        <div class="planner-tablet-wrapper">
+          <!-- Physical Tablet Screen Frame -->
+          <div class="planner-tablet-body">
+            <!-- Gridded Paper Page -->
+            <div class="planner-paper-sheet">
+              <!-- Header: Subject & Date -->
+              <div class="planner-top-header">
+                <div class="planner-subject-box">
+                  <span class="planner-title-handwritten" id="modalNotebookPageHeading">NOTE-TAKING</span>
+                  <span class="planner-page-badge" id="modalNbPageNumber">PAGE 1 / 6</span>
+                </div>
+                <div class="planner-date-box">
+                  <span class="planner-date-label" id="modalNotebookHeaderDate">OCTOBER 5, 2026</span>
+                  <div class="planner-sheet-actions">
+                    <button class="planner-action-btn" id="modalNotebookAddPageBtn" title="Add a new page">＋ New Page</button>
+                    <button class="planner-action-btn" id="modalNotebookDeletePageBtn" title="Delete current page">🗑️</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Integrated Pen Writing Bar -->
+              <div class="planner-pen-bar">
+                <div class="planner-pen-indicator">
+                  <span class="pen-dot"></span>
+                  <span>PEN</span>
+                </div>
+                <input type="text" id="modalNbTermInput" class="planner-line-input pen-cue-input" placeholder="Keyword / Cue (e.g. Serendipity)...">
+                <input type="text" id="modalNbMeaningInput" class="planner-line-input pen-note-input" placeholder="Note / Definition / Nuance...">
+                <input type="text" id="modalNbExampleInput" class="planner-line-input pen-example-input" placeholder="Usage sentence in conversation...">
+                <button type="button" class="planner-ai-btn" id="modalNbAIExplainBtn" title="Consult AI dictionary">✨ AI Assist</button>
+                <button type="button" class="planner-btn-write" id="modalNbSaveNoteBtn">Write ✍️</button>
+              </div>
+
+              <div class="ai-explain-indicator" id="modalNbAILoading" style="display: none;">
+                <span class="spinner-dot"></span> Consulting linguistic AI dictionary...
+              </div>
+
+              <!-- Cornell 2-Column Grid -->
+              <div class="cornell-main-grid">
+                <!-- Left Column: CUE & QUESTIONS -->
+                <div class="cornell-cue-column">
+                  <div class="cornell-section-banner">
+                    <span class="highlighter-peach">CUE</span>
+                  </div>
+
+                  <!-- Hand-drawn Style Sketch Diagram -->
+                  <div class="cornell-diagram-card">
+                    <div class="diagram-sketch-box">
+                      <div class="sketch-top-arrow">⤴ CUE</div>
+                      <div class="sketch-rect-outer">
+                        <div class="sketch-rect-inner">
+                          <span class="sketch-circle-note">NOTE</span>
+                        </div>
+                      </div>
+                      <div class="sketch-bottom-arrow">⇣ SUMMARY</div>
+                    </div>
+                  </div>
+
+                  <!-- Vocabulary Cues List -->
+                  <div class="cues-feed-container" id="modalNotebookCuesList">
+                    <!-- Populated dynamically with cue terms -->
+                  </div>
+
+                  <div class="cornell-questions-container">
+                    <div class="questions-banner">
+                      <span class="highlighter-peach-sub">QUESTIONS:</span>
+                    </div>
+                    <ul class="cue-prompt-bullets">
+                      <li>• Why do you take notes?</li>
+                      <li>• What do you hope to get from your partner?</li>
+                      <li>• How can you use this idiom tonight?</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- Vertical Dividing Line -->
+                <div class="cornell-divider-line"></div>
+
+                <!-- Right Column: NOTES & MAIN CONTENT -->
+                <div class="cornell-notes-column" id="modalNotebookNotesContainer">
+                  <!-- Rendered notes with peach/sage highlighters on ruled gridded paper -->
+                </div>
+              </div>
+
+              <!-- Bottom Full-Width Row: SUMMARY -->
+              <div class="cornell-summary-container">
+                <div class="summary-banner">
+                  <span class="highlighter-sage">SUMMARY</span>
+                  <span class="summary-sub-hint">CREATE NOTES YOU WILL USE!</span>
+                </div>
+                <div class="summary-editable-text" id="modalPlannerSummaryText" contenteditable="true" spellcheck="false">
+                  Overall, good speaking notes capture both main ideas and idioms. The main thing to remember is that active conversational notes help you speak with natural rhythm!
+                </div>
+                <div class="planner-footer-bar">
+                  <span class="planner-footer-watermark">ROOTME TALK • UPLIFTING PLANNER</span>
+                  <div class="planner-navigation-group">
+                    <button class="planner-nav-arrow" id="modalNbPrevPageBtn" title="Previous page">‹ Prev</button>
+                    <button class="planner-nav-arrow" id="modalNbNextPageBtn" title="Next page">Next ›</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Edge Vertical Numbered Sticky Tabs (1 to 12) from the reference image -->
+            <div class="planner-vertical-tabs" id="modalNotebookPageTabs">
+              <!-- Dynamically rendered tabs 1, 2, 3... in pastel hues -->
+            </div>
+          </div>
+
+          <!-- Stylus (Apple Pencil) resting beside the tablet -->
+          <div class="planner-stylus-wrap">
+            <div class="stylus-pencil">
+              <div class="stylus-tip"></div>
+              <div class="stylus-shaft">
+                <span class="stylus-label">ROOTME TALK</span>
+              </div>
+              <div class="stylus-end"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Floating Toast Notifications Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Audio Effects for Reactions & Timers -->
+  <div id="reactionSounds" style="display: none;"></div>
+
+  <!-- Scripts -->
+  <script src="/js/ai-partner.js"></script>
+  <script src="/js/whiteboard.js"></script>
+  <script src="/js/notebook.js"></script>
+  <script src="/js/ai-coach.js"></script>
+  <script src="/js/webrtc.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
