@@ -32,7 +32,8 @@ const state = {
     intervalId: null
   },
   correctionMode: false,
-  selectedAvatar: '🦊'
+  selectedAvatar: '🦊',
+  lobbyMode: 'live' // 'live' or 'scheduled'
 };
 
 // Helper: render profile photo image if available, else emoji avatar
@@ -161,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSocket();
   setupUIEventListeners();
   setupSettingsAndMicMeter();
+  startCountdownTicker();
 });
 
 // Load and Persist Profile in LocalStorage
@@ -322,6 +324,99 @@ function initSocket() {
       updateParticipantTileState(state.socket.id, { isSpeaking });
     }
   };
+
+  // When a scheduled room goes live
+  state.socket.on('room:live_started', ({ roomId, room }) => {
+    sfx.playBell();
+    showToast(`🔔 "${room.title}" is now LIVE! Join in!`, 'success');
+    renderLobbyRooms();
+    updateLobbyStats();
+  });
+}
+
+// Countdown Formatting Helpers
+function formatCountdown(targetTimestamp) {
+  if (!targetTimestamp) return '00:00';
+  const diff = targetTimestamp - Date.now();
+  if (diff <= 0) return 'Opening now...';
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  return `${minutes}m ${seconds}s`;
+}
+
+function formatScheduledTime(timestamp) {
+  if (!timestamp) return '';
+  const d = new Date(timestamp);
+  const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) {
+    return `Today at ${timeStr}`;
+  }
+  const dateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return `${dateStr}, ${timeStr}`;
+}
+
+let countdownInterval = null;
+function startCountdownTicker() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    document.querySelectorAll('.countdown-span[data-target-time]').forEach(el => {
+      const target = parseInt(el.getAttribute('data-target-time'), 10);
+      if (target) {
+        el.textContent = formatCountdown(target);
+      }
+    });
+  }, 1000);
+}
+
+// RSVP & Start Early Room Actions
+function toggleRoomRSVP(roomId) {
+  if (!state.socket) return;
+  sfx.playPop();
+  state.socket.emit('room:rsvp', {
+    roomId,
+    user: {
+      id: state.socket.id,
+      name: state.currentUser.name,
+      avatar: state.currentUser.avatar,
+      photoUrl: state.currentUser.photoUrl
+    }
+  }, (res) => {
+    if (res.success) {
+      showToast(res.isRsvp ? 'RSVP confirmed! You will be notified when this room opens. 🔔' : 'RSVP cancelled.', 'info');
+      const room = state.allRooms.find(r => r.id === roomId);
+      if (room) {
+        room.rsvpCount = res.rsvpCount;
+        room.rsvps = res.rsvps || [];
+        renderLobbyRooms();
+        updateLobbyStats();
+      }
+    } else {
+      showToast(res.error || 'Failed to update RSVP', 'error');
+    }
+  });
+}
+
+function startRoomEarly(roomId) {
+  if (!state.socket) return;
+  showToast('Opening room now...', 'info');
+  state.socket.emit('room:start_early', { roomId }, (res) => {
+    if (res.success) {
+      showToast('Room opened! Entering now... 🚀', 'success');
+      state.lobbyMode = 'live';
+      const liveBtn = document.getElementById('tabLiveRoomsBtn');
+      const schedBtn = document.getElementById('tabScheduledRoomsBtn');
+      if (liveBtn) liveBtn.classList.add('active');
+      if (schedBtn) schedBtn.classList.remove('active');
+      attemptJoinRoom(roomId);
+    } else {
+      showToast(res.error || 'Could not open room early', 'error');
+    }
+  });
 }
 
 // Render Lobby Rooms with Active Filters
@@ -332,6 +427,13 @@ function renderLobbyRooms() {
   if (!grid) return;
 
   const filtered = state.allRooms.filter(room => {
+    // Mode Filter: Live vs Scheduled
+    if (state.lobbyMode === 'scheduled') {
+      if (!room.isScheduled) return false;
+    } else {
+      if (room.isScheduled) return false;
+    }
+
     // Language Filter
     if (state.filters.language !== 'all' && room.language.toLowerCase() !== state.filters.language.toLowerCase()) {
       return false;
@@ -362,87 +464,203 @@ function renderLobbyRooms() {
     return true;
   });
 
-  if (counterPill) counterPill.textContent = `${filtered.length} rooms live`;
+  if (counterPill) {
+    if (state.lobbyMode === 'scheduled') {
+      counterPill.textContent = `${filtered.length} scheduled rooms`;
+    } else {
+      counterPill.textContent = `${filtered.length} rooms live`;
+    }
+  }
 
   if (filtered.length === 0) {
     grid.innerHTML = '';
-    if (emptyState) emptyState.style.display = 'block';
+    if (emptyState) {
+      emptyState.style.display = 'block';
+      const emptyTitle = emptyState.querySelector('h3');
+      const emptyDesc = emptyState.querySelector('p');
+      if (state.lobbyMode === 'scheduled') {
+        if (emptyTitle) emptyTitle.textContent = 'No Upcoming Rooms Scheduled';
+        if (emptyDesc) emptyDesc.textContent = 'Be the first to schedule a room with a pre-set opening time!';
+      } else {
+        if (emptyTitle) emptyTitle.textContent = 'No Matching Live Rooms';
+        if (emptyDesc) emptyDesc.textContent = 'Be the pioneer! Create an open conversation room for learners across the globe.';
+      }
+    }
     return;
   }
 
   if (emptyState) emptyState.style.display = 'none';
 
-  grid.innerHTML = filtered.map(room => {
-    const isFull = room.participantCount >= room.capacity;
-    const capacityPct = Math.min(100, Math.round((room.participantCount / room.capacity) * 100));
-    const levelClass = getLevelBadgeClass(room.levelCode);
+  if (state.lobbyMode === 'scheduled') {
+    // Render Scheduled Room Cards
+    grid.innerHTML = filtered.map(room => {
+      const levelClass = getLevelBadgeClass(room.levelCode);
+      const rsvps = room.rsvps || [];
+      const rsvpCount = room.rsvpCount || rsvps.length;
+      const isUserHost = Boolean(room.creatorName && (room.creatorName === state.currentUser.name || room.hostId === (state.socket && state.socket.id)));
+      const isUserRsvpd = rsvps.some(r => r.name === state.currentUser.name || r.id === (state.socket && state.socket.id));
 
-    // Mini participant avatars (show up to 4)
-    const avatarsHtml = room.participants.slice(0, 4).map(p => `
-      <div class="mini-avatar-item ${p.isSpeaking ? 'mini-avatar-speaking' : ''}" title="${escapeHtml(p.name)}">
-        ${renderAvatarHtml(p)}
-      </div>
-    `).join('');
+      const rsvpAvatarsHtml = rsvps.slice(0, 4).map(p => `
+        <div class="mini-avatar-item" title="${escapeHtml(p.name)}">
+          ${renderAvatarHtml(p)}
+        </div>
+      `).join('');
 
-    return `
-      <div class="room-card" data-room-id="${room.id}">
-        <div>
-          <div class="card-top-badges">
-            <div class="lang-indicator">
-              <span>${room.flag || '🌐'}</span>
-              <span>${room.language}</span>
+      return `
+        <div class="room-card scheduled-card" data-room-id="${room.id}">
+          <div>
+            <div class="card-top-badges">
+              <div class="lang-indicator">
+                <span>${room.flag || '🌐'}</span>
+                <span>${room.language}</span>
+              </div>
+              <div class="card-badges-right">
+                <span class="badge ${levelClass}">${room.level}</span>
+                <span class="badge badge-scheduled">📅 Scheduled</span>
+                ${room.isPrivate ? '<span class="badge badge-topic">🔒 Locked</span>' : ''}
+              </div>
             </div>
-            <div class="card-badges-right">
-              <span class="badge ${levelClass}">${room.level}</span>
-              ${room.isPrivate ? '<span class="badge badge-topic">🔒 Locked</span>' : ''}
+
+            <div class="card-countdown-banner">
+              <div class="countdown-timer-pill">
+                <span>⏳</span>
+                <span class="countdown-span" data-target-time="${room.scheduledFor}">${formatCountdown(room.scheduledFor)}</span>
+              </div>
+              <div class="countdown-exact-time">${formatScheduledTime(room.scheduledFor)}</div>
             </div>
+
+            <h3 class="room-card-title">${escapeHtml(room.title)}</h3>
           </div>
 
-          <h3 class="room-card-title">${escapeHtml(room.title)}</h3>
-        </div>
-
-        <div>
-          <div class="room-participants-preview">
-            <div class="avatar-stack">
-              ${avatarsHtml}
-              ${room.participantCount > 4 ? `<div class="mini-avatar-item" style="font-size: 0.75rem; font-weight:700;">+${room.participantCount - 4}</div>` : ''}
+          <div>
+            <div class="rsvp-stack-row">
+              <div class="avatar-stack">
+                ${rsvpAvatarsHtml || '<div class="mini-avatar-item" style="opacity:0.6;">👤</div>'}
+                ${rsvpCount > 4 ? `<div class="mini-avatar-item" style="font-size: 0.75rem; font-weight:700;">+${rsvpCount - 4}</div>` : ''}
+              </div>
+              <span class="rsvp-count-label">${rsvpCount} RSVP${rsvpCount === 1 ? '' : 's'}</span>
+              <span class="host-name-tag" style="margin-left:auto;">Host: <strong>${escapeHtml(room.creatorName || 'Member')}</strong></span>
             </div>
 
-            <div class="capacity-meter-wrap">
-              <span class="capacity-text">${room.participantCount}/${room.capacity} Seats</span>
-              <div class="capacity-bar-track">
-                <div class="capacity-bar-fill ${isFull ? 'full' : ''}" style="width: ${capacityPct}%;"></div>
+            <div class="room-card-footer">
+              <span class="host-name-tag">Topic: <strong>${escapeHtml(room.topic)}</strong></span>
+              <div style="display:flex; gap:0.4rem; align-items:center;">
+                ${isUserHost ? `<button class="btn-start-early" data-room-id="${room.id}">▶ Open Early</button>` : ''}
+                <button class="btn-rsvp-room ${isUserRsvpd ? 'rsvpd' : ''}" data-room-id="${room.id}">
+                  ${isUserRsvpd ? '✓ RSVP’d' : '🔔 Remind Me'}
+                </button>
               </div>
             </div>
           </div>
+        </div>
+      `;
+    }).join('');
 
-          <div class="room-card-footer">
-            <span class="host-name-tag">Topic: <strong>${escapeHtml(room.topic)}</strong></span>
-            <button class="btn-join-room" data-room-id="${room.id}" ${isFull ? 'disabled' : ''}>
-              ${isFull ? 'Room Full' : 'Join Room →'}
-            </button>
+    // Attach Scheduled Room Action Listeners
+    grid.querySelectorAll('.btn-rsvp-room').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const roomId = btn.getAttribute('data-room-id');
+        toggleRoomRSVP(roomId);
+      });
+    });
+
+    grid.querySelectorAll('.btn-start-early').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const roomId = btn.getAttribute('data-room-id');
+        startRoomEarly(roomId);
+      });
+    });
+
+    grid.querySelectorAll('.room-card.scheduled-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const roomId = card.getAttribute('data-room-id');
+        const room = state.allRooms.find(r => r.id === roomId);
+        if (!room) return;
+        const isUserHost = Boolean(room.creatorName && (room.creatorName === state.currentUser.name || room.hostId === (state.socket && state.socket.id)));
+        if (isUserHost) {
+          startRoomEarly(roomId);
+        } else {
+          toggleRoomRSVP(roomId);
+        }
+      });
+    });
+
+  } else {
+    // Render Live Room Cards
+    grid.innerHTML = filtered.map(room => {
+      const isFull = room.participantCount >= room.capacity;
+      const capacityPct = Math.min(100, Math.round((room.participantCount / room.capacity) * 100));
+      const levelClass = getLevelBadgeClass(room.levelCode);
+
+      // Mini participant avatars (show up to 4)
+      const avatarsHtml = room.participants.slice(0, 4).map(p => `
+        <div class="mini-avatar-item ${p.isSpeaking ? 'mini-avatar-speaking' : ''}" title="${escapeHtml(p.name)}">
+          ${renderAvatarHtml(p)}
+        </div>
+      `).join('');
+
+      return `
+        <div class="room-card" data-room-id="${room.id}">
+          <div>
+            <div class="card-top-badges">
+              <div class="lang-indicator">
+                <span>${room.flag || '🌐'}</span>
+                <span>${room.language}</span>
+              </div>
+              <div class="card-badges-right">
+                <span class="badge ${levelClass}">${room.level}</span>
+                ${room.isPrivate ? '<span class="badge badge-topic">🔒 Locked</span>' : ''}
+              </div>
+            </div>
+
+            <h3 class="room-card-title">${escapeHtml(room.title)}</h3>
+          </div>
+
+          <div>
+            <div class="room-participants-preview">
+              <div class="avatar-stack">
+                ${avatarsHtml}
+                ${room.participantCount > 4 ? `<div class="mini-avatar-item" style="font-size: 0.75rem; font-weight:700;">+${room.participantCount - 4}</div>` : ''}
+              </div>
+
+              <div class="capacity-meter-wrap">
+                <span class="capacity-text">${room.participantCount}/${room.capacity} Seats</span>
+                <div class="capacity-bar-track">
+                  <div class="capacity-bar-fill ${isFull ? 'full' : ''}" style="width: ${capacityPct}%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="room-card-footer">
+              <span class="host-name-tag">Topic: <strong>${escapeHtml(room.topic)}</strong></span>
+              <button class="btn-join-room" data-room-id="${room.id}" ${isFull ? 'disabled' : ''}>
+                ${isFull ? 'Room Full' : 'Join Room →'}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
 
-  // Attach join click listeners
-  grid.querySelectorAll('.btn-join-room').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const roomId = btn.getAttribute('data-room-id');
-      attemptJoinRoom(roomId);
+    // Attach join click listeners
+    grid.querySelectorAll('.btn-join-room').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const roomId = btn.getAttribute('data-room-id');
+        attemptJoinRoom(roomId);
+      });
     });
-  });
 
-  // Clicking anywhere on card also triggers join if not full
-  grid.querySelectorAll('.room-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const roomId = card.getAttribute('data-room-id');
-      attemptJoinRoom(roomId);
+    // Clicking anywhere on card also triggers join if not full
+    grid.querySelectorAll('.room-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const roomId = card.getAttribute('data-room-id');
+        attemptJoinRoom(roomId);
+      });
     });
-  });
+  }
 }
 
 function getLevelBadgeClass(code) {
@@ -453,6 +671,13 @@ function getLevelBadgeClass(code) {
 }
 
 function updateLobbyStats() {
+  const liveCount = state.allRooms.filter(r => !r.isScheduled).length;
+  const schedCount = state.allRooms.filter(r => r.isScheduled).length;
+  const liveBadge = document.getElementById('liveRoomsBadge');
+  const schedBadge = document.getElementById('scheduledRoomsBadge');
+  if (liveBadge) liveBadge.textContent = liveCount;
+  if (schedBadge) schedBadge.textContent = schedCount;
+
   const statsRooms = document.getElementById('statsRoomsCount');
   const globalOnline = document.getElementById('globalOnlineCount');
   if (statsRooms) statsRooms.textContent = state.allRooms.length;
@@ -1404,6 +1629,109 @@ function setupUIEventListeners() {
     profileModal.close();
   });
 
+  // Lobby Mode Switcher Tabs (Live vs Scheduled)
+  const tabLiveRoomsBtn = document.getElementById('tabLiveRoomsBtn');
+  const tabScheduledRoomsBtn = document.getElementById('tabScheduledRoomsBtn');
+  const btnQuickScheduleRoom = document.getElementById('btnQuickScheduleRoom');
+
+  if (tabLiveRoomsBtn && tabScheduledRoomsBtn) {
+    tabLiveRoomsBtn.addEventListener('click', () => {
+      state.lobbyMode = 'live';
+      tabLiveRoomsBtn.classList.add('active');
+      tabScheduledRoomsBtn.classList.remove('active');
+      renderLobbyRooms();
+    });
+
+    tabScheduledRoomsBtn.addEventListener('click', () => {
+      state.lobbyMode = 'scheduled';
+      tabScheduledRoomsBtn.classList.add('active');
+      tabLiveRoomsBtn.classList.remove('active');
+      renderLobbyRooms();
+    });
+  }
+
+  // Pre-Scheduling Controls inside Create Room Modal
+  const optionStartNow = document.getElementById('optionStartNow');
+  const optionScheduleLater = document.getElementById('optionScheduleLater');
+  const scheduleTimingOptions = document.getElementById('scheduleTimingOptions');
+  const scheduleChips = document.querySelectorAll('.schedule-chip');
+  const scheduledDatetimeInput = document.getElementById('roomScheduledDatetimeInput');
+  const scheduleTimingPreview = document.getElementById('scheduleTimingPreview');
+
+  let selectedScheduleMinutes = 15;
+
+  function updateSchedulePreview() {
+    if (!scheduleTimingPreview) return;
+    if (selectedScheduleMinutes === 'custom') {
+      if (scheduledDatetimeInput && scheduledDatetimeInput.value) {
+        const d = new Date(scheduledDatetimeInput.value);
+        if (!isNaN(d.getTime())) {
+          scheduleTimingPreview.textContent = `Room will open automatically on ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+          return;
+        }
+      }
+      scheduleTimingPreview.textContent = 'Select custom date & time above';
+    } else {
+      const targetTime = Date.now() + (parseInt(selectedScheduleMinutes, 10) * 60 * 1000);
+      const d = new Date(targetTime);
+      scheduleTimingPreview.textContent = `Room will open automatically at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} (in ${selectedScheduleMinutes}m)`;
+    }
+  }
+
+  if (optionStartNow && optionScheduleLater) {
+    optionStartNow.addEventListener('change', () => {
+      if (scheduleTimingOptions) scheduleTimingOptions.style.display = 'none';
+    });
+    optionScheduleLater.addEventListener('change', () => {
+      if (scheduleTimingOptions) {
+        scheduleTimingOptions.style.display = 'block';
+        updateSchedulePreview();
+      }
+    });
+  }
+
+  scheduleChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      scheduleChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const mins = chip.getAttribute('data-minutes');
+      if (mins === 'custom') {
+        selectedScheduleMinutes = 'custom';
+        if (scheduledDatetimeInput) {
+          scheduledDatetimeInput.style.display = 'block';
+          if (!scheduledDatetimeInput.value) {
+            const future = new Date(Date.now() + 30 * 60 * 1000);
+            const pad = (n) => String(n).padStart(2, '0');
+            scheduledDatetimeInput.value = `${future.getFullYear()}-${pad(future.getMonth()+1)}-${pad(future.getDate())}T${pad(future.getHours())}:${pad(future.getMinutes())}`;
+          }
+        }
+      } else {
+        selectedScheduleMinutes = parseInt(mins, 10) || 15;
+        if (scheduledDatetimeInput) {
+          scheduledDatetimeInput.style.display = 'none';
+        }
+      }
+      updateSchedulePreview();
+    });
+  });
+
+  if (scheduledDatetimeInput) {
+    scheduledDatetimeInput.addEventListener('input', updateSchedulePreview);
+  }
+
+  if (btnQuickScheduleRoom) {
+    btnQuickScheduleRoom.addEventListener('click', () => {
+      if (createRoomModal) {
+        createRoomModal.showModal();
+        if (optionScheduleLater) {
+          optionScheduleLater.checked = true;
+          if (scheduleTimingOptions) scheduleTimingOptions.style.display = 'block';
+          updateSchedulePreview();
+        }
+      }
+    });
+  }
+
   // Create Room Form Submit
   const createForm = document.getElementById('createRoomForm');
   const privateToggle = document.getElementById('roomPrivateCheckbox');
@@ -1432,6 +1760,20 @@ function setupUIEventListeners() {
     const isPrivate = privateToggle.checked;
     const password = isPrivate ? document.getElementById('roomPasswordInput').value.trim() : '';
 
+    const isScheduled = optionScheduleLater && optionScheduleLater.checked;
+    let scheduledFor = null;
+    if (isScheduled) {
+      if (selectedScheduleMinutes === 'custom') {
+        if (scheduledDatetimeInput && scheduledDatetimeInput.value) {
+          scheduledFor = new Date(scheduledDatetimeInput.value).getTime();
+        } else {
+          scheduledFor = Date.now() + 30 * 60 * 1000;
+        }
+      } else {
+        scheduledFor = Date.now() + (parseInt(selectedScheduleMinutes, 10) * 60 * 1000);
+      }
+    }
+
     state.socket.emit('room:create', {
       title,
       language,
@@ -1443,6 +1785,8 @@ function setupUIEventListeners() {
       capacity,
       isPrivate,
       password,
+      isScheduled,
+      scheduledFor,
       creatorName: state.currentUser.name,
       creatorAvatar: state.currentUser.avatar,
       creatorPhotoUrl: state.currentUser.photoUrl,
@@ -1452,8 +1796,21 @@ function setupUIEventListeners() {
         createRoomModal.close();
         createForm.reset();
         passwordGroup.style.display = 'none';
-        showToast(`Created room "${title}"! Joining now... 🚀`, 'success');
-        attemptJoinRoom(res.roomId, password);
+        if (scheduleTimingOptions) scheduleTimingOptions.style.display = 'none';
+        if (optionStartNow) optionStartNow.checked = true;
+
+        if (isScheduled) {
+          showToast(`Room "${title}" pre-scheduled successfully! 📅`, 'success');
+          // Switch view to scheduled rooms tab
+          state.lobbyMode = 'scheduled';
+          if (tabLiveRoomsBtn) tabLiveRoomsBtn.classList.remove('active');
+          if (tabScheduledRoomsBtn) tabScheduledRoomsBtn.classList.add('active');
+          renderLobbyRooms();
+          updateLobbyStats();
+        } else {
+          showToast(`Created room "${title}"! Joining now... 🚀`, 'success');
+          attemptJoinRoom(res.roomId, password);
+        }
       } else {
         showToast(res.error || 'Failed to create room', 'error');
       }

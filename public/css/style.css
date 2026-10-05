@@ -3846,3 +3846,261 @@ p, .hero-subtitle, .speaker-speech-bubble, .icebreaker-prompt-text {
   color: var(--white);
 }
 
+/* ==========================================================================
+   PRE-SCHEDULED ROOMS & LOBBY MODE SWITCHER
+   ========================================================================== */
+.lobby-mode-switch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lobby-mode-pills {
+  display: inline-flex;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 4px;
+  gap: 4px;
+}
+
+.lobby-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.lobby-mode-pill:hover {
+  color: var(--white);
+}
+
+.lobby-mode-pill.active {
+  background: var(--bg-elevated);
+  color: var(--white);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.mode-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gray-500);
+}
+
+.mode-pill-dot.live {
+  background: var(--white);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+  animation: quietWave 1.8s infinite ease-in-out;
+}
+
+.mode-pill-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-dim);
+}
+
+.lobby-mode-pill.active .mode-pill-badge {
+  color: var(--white);
+  border-color: var(--gray-600);
+}
+
+/* Modal Schedule Config Box */
+.schedule-timing-group {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.schedule-type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.schedule-toggle-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+  user-select: none;
+}
+
+.schedule-toggle-option input {
+  display: none;
+}
+
+.schedule-toggle-option.active {
+  background: var(--white);
+  color: var(--bg-main);
+  border-color: var(--white);
+  font-weight: 600;
+}
+
+.schedule-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.schedule-preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.schedule-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.schedule-chip:hover {
+  color: var(--white);
+  border-color: var(--gray-600);
+}
+
+.schedule-chip.active {
+  background: var(--bg-elevated);
+  color: var(--white);
+  border-color: var(--gray-400);
+}
+
+.schedule-hint-preview {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  background: var(--bg-card);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--gray-500);
+}
+
+/* Scheduled Room Card Styles */
+.room-card.scheduled-card {
+  border-top: 3px solid var(--gray-500);
+}
+
+.card-countdown-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  margin-bottom: 12px;
+}
+
+.countdown-timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.scheduled-clock-text {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.rsvp-stack-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  margin-top: 4px;
+}
+
+.rsvp-user-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rsvp-counter-label {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.btn-rsvp-room {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-rsvp-room:hover {
+  border-color: var(--white);
+  color: var(--white);
+  background: var(--bg-card-hover);
+}
+
+.btn-rsvp-room.rsvped {
+  background: var(--bg-elevated);
+  color: var(--white);
+  border-color: var(--gray-400);
+}
+
+.btn-start-early {
+  background: var(--white);
+  color: var(--bg-main);
+  border: 1px solid var(--white);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-start-early:hover {
+  background: var(--gray-200);
+}
+
+

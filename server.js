@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
+const db = require('./db');
 
 const app = express();
 const server = http.createServer(app);
@@ -193,23 +194,73 @@ function seedInitialRooms() {
       vocabList: [
         { term: 'Das Fingerspitzengefühl', phonetic: '[ˈfɪŋɐˌʃpɪt͡sn̩ɡəˌfyːl]', def: 'Tact, finesse, delicate touch.', example: 'Diplomatie erfordert viel Fingerspitzengefühl.' }
       ]
+    },
+    {
+      id: 'room-scheduled-french',
+      title: '🥐 French Café Morning - Beginner A1-A2',
+      language: 'French',
+      flag: '🇫🇷',
+      level: 'Beginner A1-A2',
+      levelCode: 'beginner',
+      topic: 'Casual & Lifestyle',
+      topicKey: 'casual',
+      capacity: 6,
+      isPrivate: false,
+      createdAt: Date.now() - 1000 * 60 * 10,
+      isScheduled: true,
+      scheduledFor: Date.now() + 1000 * 60 * 30,
+      rsvpUsers: [
+        { name: 'Alex (Berlin)', avatar: '👱‍♂️' },
+        { name: 'Sakura (Tokyo)', avatar: '👩‍🦳' },
+        { name: 'Carlos (Madrid)', avatar: '🧔' }
+      ],
+      host: { id: 'bot-17', name: 'Amélie (Paris)', avatar: '👩‍🎨', native: 'French' },
+      participants: [],
+      messages: [],
+      vocabList: []
+    },
+    {
+      id: 'room-scheduled-business-eng',
+      title: '💼 Tech Job Interview Prep & Pitching',
+      language: 'English',
+      flag: '🇬🇧',
+      level: 'Advanced C1-C2',
+      levelCode: 'advanced',
+      topic: 'Career & Tech',
+      topicKey: 'tech',
+      capacity: 5,
+      isPrivate: false,
+      createdAt: Date.now() - 1000 * 60 * 5,
+      isScheduled: true,
+      scheduledFor: Date.now() + 1000 * 60 * 85,
+      rsvpUsers: [
+        { name: 'Elena', avatar: '👩‍💼' },
+        { name: 'Kenji (Osaka)', avatar: '🧑‍🦱' }
+      ],
+      host: { id: 'bot-18', name: 'David (San Francisco)', avatar: '🧑‍💻', native: 'English' },
+      participants: [],
+      messages: [],
+      vocabList: []
     }
   ];
 
   initialData.forEach(r => rooms.set(r.id, r));
 }
 
-seedInitialRooms();
+function getRoomsPayload() {
+  return Array.from(rooms.values()).map(r => ({
+    ...r,
+    participantCount: r.participants ? r.participants.length : 0,
+    rsvpCount: r.rsvpUsers ? r.rsvpUsers.length : 0
+  }));
+}
 
 // API endpoint to get rooms list
 app.get('/api/rooms', (req, res) => {
-  const roomList = Array.from(rooms.values()).map(r => ({
-    ...r,
-    participantCount: r.participants.length
-  }));
+  const roomList = getRoomsPayload();
   res.json({
     rooms: roomList,
-    totalOnline: Array.from(rooms.values()).reduce((sum, r) => sum + r.participants.length, 0) + 14
+    totalOnline: Array.from(rooms.values()).reduce((sum, r) => sum + (r.participants ? r.participants.length : 0), 0) + 14
   });
 });
 
@@ -219,15 +270,15 @@ io.on('connection', (socket) => {
   let currentUser = null;
 
   // Send initial room list on connection
-  socket.emit('rooms:updated', Array.from(rooms.values()).map(r => ({
-    ...r,
-    participantCount: r.participants.length
-  })));
+  socket.emit('rooms:updated', getRoomsPayload());
 
-  // Handle Room Creation
-  socket.on('room:create', (roomData, callback) => {
+  // Handle Room Creation (Immediate or Pre-Scheduled)
+  socket.on('room:create', async (roomData, callback) => {
     try {
       const roomId = 'room-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4);
+      const isScheduled = Boolean(roomData.isScheduled);
+      const scheduledFor = roomData.scheduledFor ? Number(roomData.scheduledFor) : (isScheduled ? Date.now() + 1000 * 60 * 15 : null);
+
       const newRoom = {
         id: roomId,
         title: roomData.title || 'Conversation Room',
@@ -241,6 +292,9 @@ io.on('connection', (socket) => {
         isPrivate: Boolean(roomData.isPrivate),
         password: roomData.password || '',
         createdAt: Date.now(),
+        isScheduled,
+        scheduledFor,
+        rsvpUsers: [],
         host: {
           id: socket.id,
           name: roomData.creatorName || 'Anonymous',
@@ -253,7 +307,9 @@ io.on('connection', (socket) => {
             id: 'sys-start',
             sender: 'System',
             avatar: '⚡',
-            text: `Welcome to "${roomData.title}"! Practice speaking, share tips, and have fun.`,
+            text: isScheduled
+              ? `Room scheduled for ${new Date(scheduledFor).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Participants can RSVP now!`
+              : `Welcome to "${roomData.title}"! Practice speaking, share tips, and have fun.`,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             isSystem: true
           }
@@ -262,10 +318,8 @@ io.on('connection', (socket) => {
       };
 
       rooms.set(roomId, newRoom);
-      io.emit('rooms:updated', Array.from(rooms.values()).map(r => ({
-        ...r,
-        participantCount: r.participants.length
-      })));
+      await db.saveRoom(newRoom);
+      io.emit('rooms:updated', getRoomsPayload());
 
       if (callback) callback({ success: true, roomId, room: newRoom });
     } catch (err) {
@@ -273,11 +327,75 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle RSVP for scheduled rooms
+  socket.on('room:rsvp', async ({ roomId, user }, callback) => {
+    try {
+      const room = rooms.get(roomId);
+      if (!room) {
+        return callback && callback({ success: false, error: 'Room not found' });
+      }
+      const result = await db.toggleRSVP(roomId, user || { name: 'Learner', avatar: '🦊' });
+      room.rsvpUsers = result.rsvps;
+      await db.saveRoom(room);
+      io.emit('rooms:updated', getRoomsPayload());
+      if (callback) callback({ success: true, rsvps: result.rsvps, userRSVPed: result.userRSVPed });
+    } catch (err) {
+      if (callback) callback({ success: false, error: err.message });
+    }
+  });
+
+  // Handle Host starting scheduled room early
+  socket.on('room:start_early', async ({ roomId }, callback) => {
+    try {
+      const room = rooms.get(roomId);
+      if (room && room.isScheduled) {
+        room.isScheduled = false;
+        await db.saveRoom(room);
+        io.emit('rooms:updated', getRoomsPayload());
+        io.emit('room:live_started', {
+          roomId: room.id,
+          title: room.title,
+          flag: room.flag,
+          host: room.host,
+          rsvpUsers: room.rsvpUsers || []
+        });
+        if (callback) callback({ success: true, room });
+      }
+    } catch (err) {
+      if (callback) callback({ success: false, error: err.message });
+    }
+  });
+
   // Handle Join Room
-  socket.on('room:join', ({ roomId, user, password }, callback) => {
+  socket.on('room:join', async ({ roomId, user, password }, callback) => {
     const room = rooms.get(roomId);
     if (!room) {
       return callback && callback({ success: false, error: 'Room does not exist' });
+    }
+
+    // Check if room is scheduled for the future
+    if (room.isScheduled && room.scheduledFor && Date.now() < room.scheduledFor) {
+      const isHost = (user && user.name === room.host.name) || room.host.id === socket.id;
+      if (!isHost) {
+        return callback && callback({
+          success: false,
+          isScheduled: true,
+          scheduledFor: room.scheduledFor,
+          error: `This room is scheduled to open at ${new Date(room.scheduledFor).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Please RSVP to get notified when it starts!`
+        });
+      } else {
+        // Host arrived early: unlock and open to all participants
+        room.isScheduled = false;
+        await db.saveRoom(room);
+        io.emit('rooms:updated', getRoomsPayload());
+        io.emit('room:live_started', {
+          roomId: room.id,
+          title: room.title,
+          flag: room.flag,
+          host: room.host,
+          rsvpUsers: room.rsvpUsers || []
+        });
+      }
     }
 
     if (room.isPrivate && room.password && room.password !== password) {
@@ -309,6 +427,7 @@ io.on('connection', (socket) => {
 
     room.participants.push(currentUser);
     socket.join(roomId);
+    await db.saveRoom(room);
 
     // Announce to others in room
     socket.to(roomId).emit('peer:joined', {
@@ -514,16 +633,16 @@ io.on('connection', (socket) => {
         name: currentUser ? currentUser.name : 'A participant'
       });
 
-      // Clean up dynamic user-created rooms if empty
-      if (room.participants.length === 0 && !roomId.startsWith('room-eng-') && !roomId.startsWith('room-ielts') && !roomId.startsWith('room-nihongo') && !roomId.startsWith('room-espanol') && !roomId.startsWith('room-tech') && !roomId.startsWith('room-francais') && !roomId.startsWith('room-german')) {
+      // Clean up dynamic user-created rooms if empty (scheduled rooms remain active until their time)
+      if (room.participants.length === 0 && !room.isScheduled && !roomId.startsWith('room-eng-') && !roomId.startsWith('room-ielts') && !roomId.startsWith('room-nihongo') && !roomId.startsWith('room-espanol') && !roomId.startsWith('room-tech') && !roomId.startsWith('room-francais') && !roomId.startsWith('room-german') && !roomId.startsWith('room-scheduled')) {
         rooms.delete(roomId);
+        db.deleteRoom(roomId);
+      } else {
+        db.saveRoom(room);
       }
 
       // Update lobby count
-      io.emit('rooms:updated', Array.from(rooms.values()).map(r => ({
-        ...r,
-        participantCount: r.participants.length
-      })));
+      io.emit('rooms:updated', getRoomsPayload());
     }
 
     currentRoomId = null;
@@ -585,6 +704,47 @@ setInterval(() => {
   });
 }, 4500);
 
-server.listen(PORT, () => {
-  console.log(`🚀 RootMe Talk server running on http://localhost:${PORT}`);
-});
+async function startServer() {
+  await db.initDB();
+  const dbRooms = await db.loadRooms();
+  if (dbRooms && dbRooms.length > 0) {
+    dbRooms.forEach(r => rooms.set(r.id, r));
+    console.log(`[DB] Loaded ${dbRooms.length} rooms from database.`);
+  } else {
+    seedInitialRooms();
+    for (const r of rooms.values()) {
+      await db.saveRoom(r);
+    }
+    console.log(`[DB] Seeded initial rooms into database.`);
+  }
+
+  // Periodic scheduler check for upcoming scheduled rooms
+  setInterval(async () => {
+    const now = Date.now();
+    let updated = false;
+    for (const [id, room] of rooms.entries()) {
+      if (room.isScheduled && room.scheduledFor && now >= room.scheduledFor) {
+        console.log(`[Scheduler] Room "${room.title}" reached scheduled time! Transitioning to LIVE.`);
+        room.isScheduled = false;
+        await db.saveRoom(room);
+        updated = true;
+        io.emit('room:live_started', {
+          roomId: room.id,
+          title: room.title,
+          flag: room.flag,
+          host: room.host,
+          rsvpUsers: room.rsvpUsers || []
+        });
+      }
+    }
+    if (updated) {
+      io.emit('rooms:updated', getRoomsPayload());
+    }
+  }, 4000);
+
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 RootMe Talk server running on http://0.0.0.0:${PORT}`);
+  });
+}
+
+startServer();

@@ -201,13 +201,30 @@
             </label>
           </div>
         </div>
+      <!-- Lobby Mode Switcher: Live Rooms vs Pre-Scheduled Rooms -->
+      <div class="lobby-mode-switch-bar">
+        <div class="lobby-mode-pills">
+          <button type="button" class="lobby-mode-pill active" id="tabLiveRoomsBtn" data-mode="live">
+            <span class="mode-pill-dot live"></span>
+            <span class="mode-pill-text">Live Rooms</span>
+            <span class="mode-pill-badge" id="liveRoomsCountBadge">7</span>
+          </button>
+          <button type="button" class="lobby-mode-pill" id="tabScheduledRoomsBtn" data-mode="scheduled">
+            <span class="mode-pill-icon">📅</span>
+            <span class="mode-pill-text">Upcoming & Pre-Scheduled</span>
+            <span class="mode-pill-badge" id="scheduledRoomsCountBadge">2</span>
+          </button>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btnQuickScheduleRoom">
+          <span>📅 Pre-Schedule a Room</span>
+        </button>
       </div>
 
       <!-- Active Rooms Grid -->
       <div class="rooms-container">
         <div class="section-header">
           <div class="section-title-wrap">
-            <h2 class="section-title">Active Conversation Rooms</h2>
+            <h2 class="section-title" id="roomsListHeading">Active Conversation Rooms</h2>
             <span class="rooms-counter-pill" id="matchedRoomsCount">7 rooms live</span>
           </div>
           <button class="btn btn-sm btn-ghost" id="refreshRoomsBtn">
@@ -777,6 +794,37 @@
               <option value="6" selected>6 People (Balanced)</option>
               <option value="8">8 People (Lively Group)</option>
             </select>
+          </div>
+        </div>
+
+        <!-- Timing / Schedule Options -->
+        <div class="form-group schedule-timing-group">
+          <label class="form-label">Room Timing</label>
+          <div class="schedule-type-toggle">
+            <label class="schedule-toggle-option active" id="optionStartNow">
+              <input type="radio" name="roomScheduleMode" value="now" checked>
+              <span>⚡ Start Live Now</span>
+            </label>
+            <label class="schedule-toggle-option" id="optionScheduleLater">
+              <input type="radio" name="roomScheduleMode" value="later">
+              <span>📅 Pre-Schedule for Later</span>
+            </label>
+          </div>
+
+          <div class="schedule-config-panel" id="scheduleConfigPanel" style="display: none;">
+            <div class="schedule-preset-chips">
+              <button type="button" class="schedule-chip active" data-mins="15">In 15m</button>
+              <button type="button" class="schedule-chip" data-mins="30">In 30m</button>
+              <button type="button" class="schedule-chip" data-mins="60">In 1 hour</button>
+              <button type="button" class="schedule-chip" data-mins="120">In 2 hours</button>
+              <button type="button" class="schedule-chip" data-mins="custom">Custom Time</button>
+            </div>
+            <div class="schedule-custom-wrap" id="scheduleCustomWrap" style="display: none;">
+              <input type="datetime-local" id="roomScheduledDatetimeInput" class="custom-input custom-input-sm">
+            </div>
+            <div class="schedule-hint-preview" id="scheduleHintPreview">
+              Room will automatically unlock in 15 minutes. Others can RSVP and join at that time!
+            </div>
           </div>
         </div>
 
