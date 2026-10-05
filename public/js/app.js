@@ -1556,6 +1556,14 @@ function setupUIEventListeners() {
     drawer.classList.toggle('mobile-open');
   });
 
+  const chatDrawerCloseBtn = document.getElementById('chatDrawerCloseBtn');
+  if (chatDrawerCloseBtn) {
+    chatDrawerCloseBtn.addEventListener('click', () => {
+      const drawer = document.getElementById('chatDrawer');
+      drawer.classList.remove('mobile-open');
+    });
+  }
+
   // Leave Room Buttons
   document.getElementById('dockLeaveBtn').addEventListener('click', leaveRoom);
   document.getElementById('leaveRoomBtnTop').addEventListener('click', leaveRoom);

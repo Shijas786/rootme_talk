@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>RootMe Talk | Master Languages Through Real-Time Conversations</title>
   <meta name="description" content="Join live audio & video conversation rooms, practice speaking foreign languages with native speakers and learners worldwide. Free, instant, and interactive.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -567,10 +567,13 @@
               <span class="chat-icon">💬</span>
               <span class="chat-title">Room Chat</span>
             </div>
-            <button class="chat-mode-toggle" id="correctionModeToggle" title="Toggle Correction Mode: Format messages as helpful language feedback">
-              <span class="mode-bullet"></span>
-              <span class="mode-text">Feedback Mode</span>
-            </button>
+            <div class="chat-header-actions">
+              <button class="chat-mode-toggle" id="correctionModeToggle" title="Toggle Correction Mode: Format messages as helpful language feedback">
+                <span class="mode-bullet"></span>
+                <span class="mode-text">Feedback Mode</span>
+              </button>
+              <button class="chat-drawer-close-btn" id="chatDrawerCloseBtn" aria-label="Close Chat" title="Close Chat">✕</button>
+            </div>
           </div>
 
           <!-- Quick Suggestion Chips for Foreign Learners -->
