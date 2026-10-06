@@ -2082,95 +2082,223 @@ p, .hero-subtitle, .speaker-speech-bubble, .icebreaker-prompt-text {
     font-size: 0.78rem;
   }
 
-  /* Main Layout & Hero */
+  /* Main Layout & Hero (Compact Mobile) */
   .main-layout {
-    padding: 12px 10px 72px;
+    padding: 8px 8px 64px;
   }
   .hero-section {
-    padding: 16px 6px 18px;
+    padding: 10px 4px 12px;
   }
   .hero-badge {
-    font-size: 0.68rem;
-    padding: 3px 10px;
-    margin-bottom: 10px;
+    font-size: 0.62rem;
+    padding: 2px 7px;
+    margin-bottom: 6px;
   }
   .hero-title {
-    font-size: 1.5rem;
-    line-height: 1.25;
-    margin-bottom: 8px;
+    font-size: 1.25rem;
+    line-height: 1.22;
+    margin-bottom: 4px;
   }
   .hero-subtitle {
-    font-size: 0.85rem;
-    line-height: 1.5;
-    margin-bottom: 14px;
+    font-size: 0.74rem;
+    line-height: 1.35;
+    margin-bottom: 8px;
+    max-width: 96%;
   }
   .hero-stats {
-    padding: 6px 14px;
-    gap: 12px;
+    padding: 3px 8px;
+    gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
   }
   .stat-item {
-    gap: 4px;
+    gap: 3px;
   }
   .stat-number {
-    font-size: 0.86rem;
+    font-size: 0.76rem;
   }
   .stat-label {
-    font-size: 0.68rem;
+    font-size: 0.6rem;
   }
   .stat-divider {
     display: none;
   }
 
-  /* Filter Controls */
+  /* Filter Controls (Compact Mobile) */
   .filter-controls-card {
-    padding: 12px 10px;
-    margin-bottom: 16px;
+    padding: 8px 8px;
+    margin-bottom: 8px;
     border-radius: var(--radius-sm);
   }
   .language-tabs-wrapper {
-    padding-bottom: 8px;
-    margin-bottom: 10px;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
     -webkit-overflow-scrolling: touch;
   }
   .lang-tab {
-    padding: 5px 10px;
-    font-size: 0.78rem;
+    padding: 3px 7px;
+    font-size: 0.72rem;
+    border-radius: var(--radius-sm);
   }
   .secondary-filters {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
   }
   .search-input-wrapper {
     min-width: 100%;
     width: 100%;
   }
+  .search-input {
+    padding: 6px 10px 6px 30px;
+    font-size: 0.78rem;
+  }
   .filter-group {
     width: 100%;
     justify-content: space-between;
   }
+  .filter-group .filter-label {
+    font-size: 0.72rem;
+  }
   .filter-group .custom-select {
     flex: 1;
     min-width: 0;
+    padding: 5px 8px;
+    font-size: 0.74rem;
   }
   .toggle-filter-wrap {
-    padding: 4px 0;
+    padding: 2px 0;
+  }
+  .toggle-text {
+    font-size: 0.72rem;
   }
 
-  /* Rooms Grid */
+  /* Lobby Mode Switch Bar (Compact Mobile) */
+  .lobby-mode-switch-bar {
+    padding: 4px;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .lobby-mode-pills {
+    width: 100%;
+    display: flex;
+    gap: 4px;
+  }
+  .lobby-mode-pill {
+    flex: 1;
+    padding: 4px 6px;
+    font-size: 0.7rem;
+    justify-content: center;
+  }
+  .mode-pill-badge {
+    padding: 1px 4px;
+    font-size: 0.62rem;
+  }
+  #btnQuickScheduleRoom {
+    width: 100%;
+    padding: 5px 8px;
+    font-size: 0.72rem;
+    justify-content: center;
+  }
+
+  /* Rooms Grid & Compact Mobile Cards */
   .section-header {
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .section-title {
+    font-size: 0.95rem;
+  }
+  .rooms-counter-pill {
+    font-size: 0.66rem;
+    padding: 2px 6px;
   }
   .rooms-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 8px;
   }
   .room-card {
-    padding: 14px 12px;
+    padding: 10px 11px;
+    min-height: auto;
+    gap: 6px;
+    border-radius: var(--radius-sm);
+  }
+  .card-top-badges {
+    margin-bottom: 4px;
+  }
+  .lang-indicator {
+    font-size: 0.72rem;
+    gap: 4px;
+  }
+  .card-badges-right {
+    gap: 4px;
+  }
+  .badge {
+    font-size: 0.62rem;
+    padding: 1px 5px;
+  }
+  .room-card-title {
+    font-size: 0.88rem;
+    line-height: 1.25;
+    margin-bottom: 6px;
+  }
+  .room-participants-preview {
+    margin-bottom: 6px;
+  }
+  .mini-avatar-item {
+    width: 22px;
+    height: 22px;
+    font-size: 0.7rem;
+    margin-left: -5px;
+    border-width: 1.5px;
+  }
+  .capacity-text {
+    font-size: 0.65rem;
+  }
+  .capacity-bar-track {
+    width: 44px;
+    height: 2.5px;
+  }
+  .room-card-footer {
+    padding-top: 6px;
+    margin-top: 2px;
+  }
+  .host-name-tag {
+    font-size: 0.68rem;
+  }
+  .btn-join-room,
+  .btn-rsvp-room {
+    padding: 4px 9px;
+    font-size: 0.72rem;
+    min-height: 26px;
+    border-radius: var(--radius-sm);
+  }
+  .btn-start-early {
+    padding: 3px 6px;
+    font-size: 0.68rem;
+    min-height: 26px;
+  }
+  .card-countdown-banner {
+    padding: 3px 6px;
+    margin-bottom: 5px;
+    font-size: 0.68rem;
+  }
+  .countdown-timer-pill {
+    padding: 1px 5px;
+    font-size: 0.66rem;
+  }
+  .countdown-exact-time {
+    font-size: 0.65rem;
+  }
+  .rsvp-stack-row {
+    margin-bottom: 5px;
+    padding: 2px 0;
+  }
+  .rsvp-count-label {
+    font-size: 0.68rem;
   }
   .form-grid-2 {
     grid-template-columns: 1fr;

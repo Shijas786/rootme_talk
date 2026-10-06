@@ -91,13 +91,13 @@
         <!-- Stats Bar -->
         <div class="hero-stats">
           <div class="stat-item">
-            <span class="stat-number" id="statsRoomsCount">7</span>
+            <span class="stat-number" id="statsRoomsCount">0</span>
             <span class="stat-label">Active Rooms</span>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
-            <span class="stat-number">18+</span>
-            <span class="stat-label">Languages</span>
+            <span class="stat-number" id="globalOnlineCount">1</span>
+            <span class="stat-label">Online Now</span>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
@@ -207,12 +207,12 @@
           <button type="button" class="lobby-mode-pill active" id="tabLiveRoomsBtn" data-mode="live">
             <span class="mode-pill-dot live"></span>
             <span class="mode-pill-text">Live Rooms</span>
-            <span class="mode-pill-badge" id="liveRoomsCountBadge">7</span>
+            <span class="mode-pill-badge" id="liveRoomsCountBadge">0</span>
           </button>
           <button type="button" class="lobby-mode-pill" id="tabScheduledRoomsBtn" data-mode="scheduled">
             <span class="mode-pill-icon">📅</span>
             <span class="mode-pill-text">Upcoming & Pre-Scheduled</span>
-            <span class="mode-pill-badge" id="scheduledRoomsCountBadge">2</span>
+            <span class="mode-pill-badge" id="scheduledRoomsCountBadge">0</span>
           </button>
         </div>
         <button class="btn btn-secondary btn-sm" id="btnQuickScheduleRoom">
@@ -225,7 +225,7 @@
         <div class="section-header">
           <div class="section-title-wrap">
             <h2 class="section-title" id="roomsListHeading">Active Conversation Rooms</h2>
-            <span class="rooms-counter-pill" id="matchedRoomsCount">7 rooms live</span>
+            <span class="rooms-counter-pill" id="matchedRoomsCount">0 rooms live</span>
           </div>
           <button class="btn btn-sm btn-ghost" id="refreshRoomsBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -242,10 +242,13 @@
         </div>
 
         <div class="empty-rooms-state" id="emptyRoomsState" style="display: none;">
-          <div class="empty-icon">🔍</div>
-          <h3 class="empty-title">No rooms match your filters</h3>
-          <p class="empty-desc">Try clearing your filters or create your own room for this language!</p>
-          <button class="btn btn-primary" id="emptyCreateBtn">Create This Room</button>
+          <div class="empty-icon">☕</div>
+          <h3 class="empty-title">No rooms right now</h3>
+          <p class="empty-desc">Be the pioneer! Create an open conversation room or pre-schedule one for later to start speaking.</p>
+          <div class="empty-actions" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+            <button class="btn btn-primary btn-sm" id="emptyCreateBtn">＋ Create Room</button>
+            <button class="btn btn-secondary btn-sm" id="emptyScheduleBtn">📅 Pre-Schedule Room</button>
+          </div>
         </div>
       </div>
     </section>

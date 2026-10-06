@@ -211,6 +211,12 @@ function initSocket() {
     updateLobbyStats();
   });
 
+  // When real online user count updates
+  state.socket.on('stats:online', ({ onlineCount }) => {
+    const globalOnline = document.getElementById('globalOnlineCount');
+    if (globalOnline) globalOnline.textContent = Math.max(1, onlineCount || 1);
+  });
+
   // When a peer joins our room
   state.socket.on('peer:joined', ({ peer, message }) => {
     if (!state.currentRoom) return;
@@ -673,17 +679,19 @@ function getLevelBadgeClass(code) {
 function updateLobbyStats() {
   const liveCount = state.allRooms.filter(r => !r.isScheduled).length;
   const schedCount = state.allRooms.filter(r => r.isScheduled).length;
-  const liveBadge = document.getElementById('liveRoomsBadge');
-  const schedBadge = document.getElementById('scheduledRoomsBadge');
+  const liveBadge = document.getElementById('liveRoomsCountBadge') || document.getElementById('liveRoomsBadge');
+  const schedBadge = document.getElementById('scheduledRoomsCountBadge') || document.getElementById('scheduledRoomsBadge');
   if (liveBadge) liveBadge.textContent = liveCount;
   if (schedBadge) schedBadge.textContent = schedCount;
 
   const statsRooms = document.getElementById('statsRoomsCount');
-  const globalOnline = document.getElementById('globalOnlineCount');
   if (statsRooms) statsRooms.textContent = state.allRooms.length;
 
-  const totalUsers = state.allRooms.reduce((sum, r) => sum + r.participantCount, 0) + 18;
-  if (globalOnline) globalOnline.textContent = totalUsers;
+  const globalOnline = document.getElementById('globalOnlineCount');
+  const inRoomsCount = state.allRooms.reduce((sum, r) => sum + r.participantCount, 0);
+  if (globalOnline && !globalOnline.textContent) {
+    globalOnline.textContent = Math.max(1, inRoomsCount);
+  }
 }
 
 // Join Room Logic
@@ -729,7 +737,7 @@ function attemptJoinRoom(roomId, password = '') {
     // Connect to existing peers via WebRTC
     if (res.existingPeers && res.existingPeers.length) {
       res.existingPeers.forEach(peer => {
-        if (!peer.isBot) {
+        if (peer && peer.id) {
           state.media.connectToPeer(peer.id);
         }
       });
@@ -741,7 +749,7 @@ function attemptJoinRoom(roomId, password = '') {
 function triggerSurpriseMatch() {
   const availableRooms = state.allRooms.filter(r => r.participantCount < r.capacity && !r.isPrivate);
   if (availableRooms.length === 0) {
-    showToast('All rooms are currently full! Creating a quick room for you...', 'info');
+    showToast("No active rooms right now. Let's create one for you! 🚀", 'info');
     document.getElementById('openCreateRoomBtn').click();
     return;
   }
@@ -833,7 +841,7 @@ function renderParticipants() {
 
         <div class="participant-meta-bar">
           <span class="peer-name">${escapeHtml(p.name)} ${isMe ? '(You)' : ''}</span>
-          <span class="peer-role-badge ${p.isHost ? 'host' : ''}">${p.isHost ? 'Host 👑' : (p.isBot ? 'Partner 🤖' : 'Speaker')}</span>
+          <span class="peer-role-badge ${p.isHost ? 'host' : ''}">${p.isHost ? 'Host 👑' : 'Speaker'}</span>
         </div>
       </div>
     `;
@@ -1496,6 +1504,18 @@ function setupUIEventListeners() {
 
   document.getElementById('openCreateRoomBtn').addEventListener('click', () => createRoomModal.showModal());
   document.getElementById('emptyCreateBtn').addEventListener('click', () => createRoomModal.showModal());
+  const emptyScheduleBtn = document.getElementById('emptyScheduleBtn');
+  if (emptyScheduleBtn) {
+    emptyScheduleBtn.addEventListener('click', () => {
+      createRoomModal.showModal();
+      const optionScheduleLater = document.getElementById('optionScheduleLater');
+      const scheduleTimingOptions = document.getElementById('scheduleTimingOptions');
+      if (optionScheduleLater) {
+        optionScheduleLater.checked = true;
+        if (scheduleTimingOptions) scheduleTimingOptions.style.display = 'block';
+      }
+    });
+  }
   document.getElementById('closeCreateRoomModalBtn').addEventListener('click', () => createRoomModal.close());
   document.getElementById('cancelCreateRoomBtn').addEventListener('click', () => createRoomModal.close());
 
