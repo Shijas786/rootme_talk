@@ -21,11 +21,14 @@ class MediaManager {
     this.speakingCheckInterval = null;
     this.isSpeaking = false;
 
-    // STUN Servers for WebRTC NAT traversal
+    // Global STUN Servers for reliable cross-network WebRTC NAT traversal
     this.rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' }
       ]
     };
 

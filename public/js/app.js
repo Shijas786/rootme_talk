@@ -824,7 +824,7 @@ function renderParticipants() {
         <!-- Remote Video element if camera is on -->
         <video class="participant-video-stream" id="video-${p.id}" autoplay playsinline style="${p.isVideoOn ? '' : 'display:none;'}"></video>
         <!-- Remote Audio element -->
-        ${!isMe ? `<audio class="remote-audio" id="audio-${p.id}" autoplay></audio>` : ''}
+        ${!isMe ? `<audio class="remote-audio" id="audio-${p.id}" autoplay playsinline></audio>` : ''}
 
         <div class="peer-indicators">
           <div class="status-icon-pill ${p.isMuted ? 'muted' : ''}" id="mic-status-${p.id}" title="${p.isMuted ? 'Muted' : 'Mic active'}">
@@ -878,16 +878,24 @@ function updateParticipantTileState(peerId, updates) {
 
 function attachRemoteTrackToTile(peerId, stream, track) {
   if (track.kind === 'audio') {
-    const audioEl = document.getElementById(`audio-${peerId}`);
-    if (audioEl) {
-      audioEl.srcObject = stream;
-      audioEl.muted = state.media.isDeafened;
+    let audioEl = document.getElementById(`audio-${peerId}`);
+    if (!audioEl) {
+      audioEl = document.createElement('audio');
+      audioEl.id = `audio-${peerId}`;
+      audioEl.className = 'remote-audio';
+      audioEl.autoplay = true;
+      audioEl.playsInline = true;
+      document.body.appendChild(audioEl);
     }
+    audioEl.srcObject = stream;
+    audioEl.muted = state.media.isDeafened;
+    audioEl.play().catch(e => console.warn('Audio auto-play policy hint:', e));
   } else if (track.kind === 'video') {
     const videoEl = document.getElementById(`video-${peerId}`);
     if (videoEl) {
       videoEl.srcObject = stream;
       videoEl.style.display = 'block';
+      videoEl.play().catch(() => {});
     }
   }
 }
