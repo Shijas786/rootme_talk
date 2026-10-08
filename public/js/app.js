@@ -229,9 +229,6 @@ function initSocket() {
       renderParticipants();
       updateRoomHeaderMeta();
     }
-
-    // Connect WebRTC peer
-    state.media.connectToPeer(peer.id);
   });
 
   // When a peer leaves
@@ -240,6 +237,8 @@ function initSocket() {
     showToast(`${name} left the room`, 'info');
     state.currentRoom.participants = state.currentRoom.participants.filter(p => p.id !== peerId);
     state.media.closePeerConnection(peerId);
+    const audioEl = document.getElementById(`remote-audio-${peerId}`);
+    if (audioEl) audioEl.remove();
     renderParticipants();
     updateRoomHeaderMeta();
   });
@@ -328,6 +327,14 @@ function initSocket() {
   state.media.onLocalSpeakingChanged = (isSpeaking) => {
     if (state.currentRoom) {
       updateParticipantTileState(state.socket.id, { isSpeaking });
+      const dockMicBtn = document.getElementById('dockMicBtn');
+      if (dockMicBtn) {
+        if (isSpeaking && !state.media.isMicMuted) {
+          dockMicBtn.classList.add('speaking-live');
+        } else {
+          dockMicBtn.classList.remove('speaking-live');
+        }
+      }
     }
   };
 
@@ -823,11 +830,9 @@ function renderParticipants() {
       <div class="participant-tile ${p.isSpeaking ? 'is-speaking' : ''}" id="tile-${p.id}">
         <!-- Remote Video element if camera is on -->
         <video class="participant-video-stream" id="video-${p.id}" autoplay playsinline style="${p.isVideoOn ? '' : 'display:none;'}"></video>
-        <!-- Remote Audio element -->
-        ${!isMe ? `<audio class="remote-audio" id="audio-${p.id}" autoplay playsinline></audio>` : ''}
 
         <div class="peer-indicators">
-          <div class="status-icon-pill ${p.isMuted ? 'muted' : ''}" id="mic-status-${p.id}" title="${p.isMuted ? 'Muted' : 'Mic active'}">
+          <div class="status-icon-pill ${p.isMuted ? 'muted' : ''} ${p.isSpeaking && !p.isMuted ? 'speaking-live' : ''}" id="mic-status-${p.id}" title="${p.isMuted ? 'Muted' : 'Mic active'}">
             ${p.isMuted ? '🔇' : '🎙️'}
           </div>
         </div>
@@ -850,21 +855,30 @@ function renderParticipants() {
 
 function updateParticipantTileState(peerId, updates) {
   const tile = document.getElementById(`tile-${peerId}`);
-  if (!tile) return;
+  const micStatus = document.getElementById(`mic-status-${peerId}`);
 
   if (updates.isSpeaking !== undefined) {
     if (updates.isSpeaking) {
-      tile.classList.add('is-speaking');
+      if (tile) tile.classList.add('is-speaking');
+      if (micStatus && !micStatus.classList.contains('muted')) {
+        micStatus.classList.add('speaking-live');
+      }
     } else {
-      tile.classList.remove('is-speaking');
+      if (tile) tile.classList.remove('is-speaking');
+      if (micStatus) micStatus.classList.remove('speaking-live');
     }
   }
 
   if (updates.isMuted !== undefined) {
-    const micStatus = document.getElementById(`mic-status-${peerId}`);
     if (micStatus) {
-      micStatus.className = `status-icon-pill ${updates.isMuted ? 'muted' : ''}`;
-      micStatus.textContent = updates.isMuted ? '🔇' : '🎙️';
+      if (updates.isMuted) {
+        micStatus.className = 'status-icon-pill muted';
+        micStatus.textContent = '🔇';
+      } else {
+        const isSpeaking = tile && tile.classList.contains('is-speaking');
+        micStatus.className = `status-icon-pill ${isSpeaking ? 'speaking-live' : ''}`;
+        micStatus.textContent = '🎙️';
+      }
     }
   }
 
@@ -878,18 +892,38 @@ function updateParticipantTileState(peerId, updates) {
 
 function attachRemoteTrackToTile(peerId, stream, track) {
   if (track.kind === 'audio') {
-    let audioEl = document.getElementById(`audio-${peerId}`);
+    let container = document.getElementById('remoteAudioContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'remoteAudioContainer';
+      container.style.display = 'none';
+      document.body.appendChild(container);
+    }
+    let audioEl = document.getElementById(`remote-audio-${peerId}`);
     if (!audioEl) {
       audioEl = document.createElement('audio');
-      audioEl.id = `audio-${peerId}`;
+      audioEl.id = `remote-audio-${peerId}`;
       audioEl.className = 'remote-audio';
       audioEl.autoplay = true;
       audioEl.playsInline = true;
-      document.body.appendChild(audioEl);
+      container.appendChild(audioEl);
     }
-    audioEl.srcObject = stream;
+    const mediaStream = (stream && stream.getAudioTracks().length > 0) ? stream : new MediaStream([track]);
+    audioEl.srcObject = mediaStream;
     audioEl.muted = state.media.isDeafened;
-    audioEl.play().catch(e => console.warn('Audio auto-play policy hint:', e));
+    const playPromise = audioEl.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(e => {
+        console.warn(`[Audio] Autoplay delayed for peer ${peerId}:`, e);
+        const unlock = () => {
+          audioEl.play().catch(() => {});
+          document.removeEventListener('click', unlock);
+          document.removeEventListener('touchstart', unlock);
+        };
+        document.addEventListener('click', unlock, { once: true });
+        document.addEventListener('touchstart', unlock, { once: true });
+      });
+    }
   } else if (track.kind === 'video') {
     const videoEl = document.getElementById(`video-${peerId}`);
     if (videoEl) {
@@ -1435,6 +1469,13 @@ function leaveRoom() {
   state.socket.emit('room:leave');
   state.currentRoom = null;
 
+  // Clear all remote audio tags
+  const audioContainer = document.getElementById('remoteAudioContainer');
+  if (audioContainer) audioContainer.innerHTML = '';
+
+  const dockMicBtn = document.getElementById('dockMicBtn');
+  if (dockMicBtn) dockMicBtn.classList.remove('speaking-live');
+
   document.getElementById('inRoomView').style.display = 'none';
   document.getElementById('lobbyView').style.display = 'block';
 
@@ -1448,6 +1489,9 @@ function updateMicButtonUI(isOn) {
   document.getElementById('iconMicOff').style.display = isOn ? 'none' : 'block';
   document.getElementById('dockMicLabel').textContent = isOn ? 'Mic On' : 'Muted';
   document.getElementById('dockMicBtn').classList.toggle('danger', !isOn);
+  if (!isOn) {
+    document.getElementById('dockMicBtn').classList.remove('speaking-live');
+  }
 }
 
 function updateVideoButtonUI(isOn) {

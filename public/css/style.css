@@ -1049,8 +1049,8 @@ p, .hero-subtitle, .speaker-speech-bubble, .icebreaker-prompt-text {
 }
 
 .participant-tile.is-speaking {
-  border-color: var(--white);
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.08);
+  border-color: #10b981;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.22);
 }
 
 .participant-video-stream {
@@ -1084,13 +1084,13 @@ p, .hero-subtitle, .speaker-speech-bubble, .icebreaker-prompt-text {
   transition: all var(--transition);
 }
 
-/* Peaceful Speaking Wave Ring: Soft White Pulse */
+/* Speaking Wave Ring: Emerald Pulse */
 .speaking-wave-ring {
   position: absolute;
   width: 90px;
   height: 90px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1.5px solid rgba(16, 185, 129, 0.45);
   opacity: 0;
   pointer-events: none;
   z-index: 1;
@@ -1098,12 +1098,13 @@ p, .hero-subtitle, .speaker-speech-bubble, .icebreaker-prompt-text {
 
 .participant-tile.is-speaking .speaking-wave-ring {
   opacity: 1;
-  animation: peacefulPulse 1.6s infinite ease-out;
+  animation: peacefulPulse 1.4s infinite ease-out;
 }
 
 @keyframes peacefulPulse {
-  0% { transform: scale(0.95); opacity: 0.6; }
-  100% { transform: scale(1.3); opacity: 0; }
+  0% { transform: scale(0.95); opacity: 0.8; border-color: rgba(16, 185, 129, 0.8); }
+  50% { opacity: 0.4; border-color: rgba(16, 185, 129, 0.5); }
+  100% { transform: scale(1.38); opacity: 0; border-color: rgba(16, 185, 129, 0); }
 }
 
 .participant-meta-bar {
@@ -1159,11 +1160,27 @@ p, .hero-subtitle, .speaker-speech-bubble, .icebreaker-prompt-text {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .status-icon-pill.muted {
   color: var(--gray-500);
+  background: rgba(255, 255, 255, 0.04);
+}
+.status-icon-pill.speaking-live,
+.participant-tile.is-speaking .status-icon-pill:not(.muted) {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: #10b981;
+  color: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6), inset 0 0 4px rgba(16, 185, 129, 0.3);
+  animation: micLiveBounce 1.1s infinite ease-in-out;
+}
+
+@keyframes micLiveBounce {
+  0% { transform: scale(1); box-shadow: 0 0 6px rgba(16, 185, 129, 0.4); }
+  50% { transform: scale(1.22); box-shadow: 0 0 16px rgba(16, 185, 129, 0.85); }
+  100% { transform: scale(1); box-shadow: 0 0 6px rgba(16, 185, 129, 0.4); }
 }
 
 /* Interactive Panels (Icebreakers, Vocab, Whiteboard) */
@@ -1664,6 +1681,21 @@ p, .hero-subtitle, .speaker-speech-bubble, .icebreaker-prompt-text {
 .dock-btn.danger {
   color: var(--gray-400);
   background: var(--bg-card);
+}
+.dock-btn.speaking-live {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
+}
+.dock-btn.speaking-live .dock-icon,
+.dock-btn.speaking-live svg {
+  animation: dockMicPulse 1.1s infinite ease-in-out;
+}
+@keyframes dockMicPulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.4)); }
+  50% { transform: scale(1.22); filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.9)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.4)); }
 }
 
 .dock-label {
