@@ -206,6 +206,8 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     await db.saveRoom(room);
 
+    console.log(`[Room] ${currentUser.name} (${socket.id}) joined room "${room.title}" (${roomId}). Total in room: ${room.participants.length}`);
+
     // Announce to others in room
     socket.to(roomId).emit('peer:joined', {
       peer: currentUser,
@@ -230,6 +232,7 @@ io.on('connection', (socket) => {
 
   // WebRTC Signaling: Offer
   socket.on('signal:offer', ({ to, offer }) => {
+    console.log(`[Signaling] Offer routed: ${socket.id} -> ${to}`);
     io.to(to).emit('signal:offer', {
       from: socket.id,
       offer
@@ -238,6 +241,7 @@ io.on('connection', (socket) => {
 
   // WebRTC Signaling: Answer
   socket.on('signal:answer', ({ to, answer }) => {
+    console.log(`[Signaling] Answer routed: ${socket.id} -> ${to}`);
     io.to(to).emit('signal:answer', {
       from: socket.id,
       answer

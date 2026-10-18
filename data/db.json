@@ -1,5 +1,64 @@
 {
-  "rooms": [],
+  "rooms": [
+    {
+      "id": "room-mvdwcx8t-3x5t",
+      "title": "Test Audio Room",
+      "language": "English",
+      "flag": "🇬🇧",
+      "level": "Intermediate B1-B2",
+      "levelCode": "intermediate",
+      "topic": "Casual & Lifestyle",
+      "topicKey": "casual",
+      "capacity": 6,
+      "isPrivate": false,
+      "password": "",
+      "createdAt": 1792332273485,
+      "isScheduled": false,
+      "scheduledFor": null,
+      "rsvpUsers": [],
+      "host": {
+        "id": "tidRtYc006KLG9HeAAAA",
+        "name": "Learner",
+        "avatar": "🦊",
+        "native": "English"
+      },
+      "participants": [
+        {
+          "id": "tidRtYc006KLG9HeAAAA",
+          "name": "Learner",
+          "avatar": "🦊",
+          "photoUrl": null,
+          "native": "English",
+          "isHost": true,
+          "isMuted": false,
+          "isVideoOn": false,
+          "isSpeaking": false,
+          "joinedAt": 1792332273520
+        }
+      ],
+      "messages": [
+        {
+          "id": "sys-start",
+          "sender": "System",
+          "avatar": "⚡",
+          "text": "Welcome to \"Test Audio Room\"! Practice speaking, share tips, and have fun.",
+          "time": "07:34 PM",
+          "isSystem": true
+        },
+        {
+          "id": "msg-mvdxsbn17g8d",
+          "senderId": "6totZWbAJF_llo58AAAC",
+          "sender": "Learner",
+          "avatar": "🦊",
+          "text": "Hello from automated test!",
+          "correction": null,
+          "time": "08:14 PM",
+          "isHost": false
+        }
+      ],
+      "vocabList": []
+    }
+  ],
   "notebookPages": {},
   "userProfiles": {}
 }

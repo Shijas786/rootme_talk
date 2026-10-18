@@ -26,7 +26,7 @@ class MediaManager {
     this.speakingCheckInterval = null;
     this.isSpeaking = false;
 
-    // Redundant STUN + TURN Relay Servers for guaranteed cross-network / mobile NAT traversal
+    // Redundant Anycast STUN Servers for fast, zero-delay cross-network NAT traversal
     this.rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -34,17 +34,10 @@ class MediaManager {
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun3.l.google.com:19302' },
         { urls: 'stun:stun4.l.google.com:19302' },
-        { urls: 'stun:openrelay.metered.ca:80' },
-        {
-          urls: [
-            'turn:openrelay.metered.ca:80',
-            'turn:openrelay.metered.ca:443',
-            'turn:openrelay.metered.ca:443?transport=tcp'
-          ],
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
-      ]
+        { urls: 'stun:stun.cloudflare.com:3478' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ],
+      iceCandidatePoolSize: 10
     };
 
     // Auto resume audio context & unlock remote audio on user interaction
@@ -64,7 +57,7 @@ class MediaManager {
     }
     const audioTags = document.querySelectorAll('audio.remote-audio, #remoteAudioContainer audio');
     audioTags.forEach(a => {
-      if (a.paused && a.srcObject) {
+      if (a.srcObject) {
         a.play().catch(() => {});
       }
     });
@@ -390,21 +383,14 @@ class MediaManager {
 
     this.socket.on('signal:offer', async ({ from, offer }) => {
       try {
+        console.log(`[WebRTC] Received offer from ${from}`);
         let pc = this.peers.get(from);
-        if (!pc) {
-          pc = this.createPeerConnection(from);
-        }
-
-        const isPolite = (this.socket.id || '').localeCompare(from) < 0;
-        const offerCollision = (pc.signalingState !== 'stable');
-
-        if (offerCollision) {
-          if (!isPolite) {
-            console.log(`[WebRTC] Glare collision with ${from}. Impolite peer ignoring offer.`);
-            return;
+        if (!pc || pc.signalingState !== 'stable') {
+          if (pc) {
+            console.log(`[WebRTC] Peer ${from} connection was in state ${pc.signalingState}, resetting connection.`);
+            try { pc.close(); } catch (e) {}
           }
-          console.log(`[WebRTC] Glare collision with ${from}. Polite peer rolling back.`);
-          await pc.setLocalDescription({ type: 'rollback' });
+          pc = this.createPeerConnection(from);
         }
 
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -417,6 +403,7 @@ class MediaManager {
           to: from,
           answer
         });
+        console.log(`[WebRTC] Answer generated and sent to ${from}`);
       } catch (err) {
         console.error('[WebRTC] Error handling signal:offer:', err);
       }
@@ -424,10 +411,14 @@ class MediaManager {
 
     this.socket.on('signal:answer', async ({ from, answer }) => {
       try {
+        console.log(`[WebRTC] Received answer from ${from}`);
         const pc = this.peers.get(from);
         if (pc && pc.signalingState === 'have-local-offer') {
           await pc.setRemoteDescription(new RTCSessionDescription(answer));
           await this.drainCandidateQueue(from, pc);
+          console.log(`[WebRTC] Handshake complete for ${from}. ICE state: ${pc.iceConnectionState}`);
+        } else {
+          console.warn(`[WebRTC] Received answer from ${from} but state is ${pc ? pc.signalingState : 'null'}`);
         }
       } catch (err) {
         console.error('[WebRTC] Error handling signal:answer:', err);
@@ -475,9 +466,15 @@ class MediaManager {
     // Handle ICE Candidates
     pc.onicecandidate = (event) => {
       if (event.candidate && this.socket) {
+        const candidatePayload = event.candidate.toJSON ? event.candidate.toJSON() : {
+          candidate: event.candidate.candidate,
+          sdpMid: event.candidate.sdpMid,
+          sdpMLineIndex: event.candidate.sdpMLineIndex,
+          usernameFragment: event.candidate.usernameFragment
+        };
         this.socket.emit('signal:ice-candidate', {
           to: peerId,
-          candidate: event.candidate
+          candidate: candidatePayload
         });
       }
     };

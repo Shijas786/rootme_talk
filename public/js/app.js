@@ -959,36 +959,39 @@ function attachRemoteTrackToTile(peerId, stream, track) {
       container.appendChild(audioEl);
     }
 
-    // Only assign srcObject if track is not already playing to prevent duplicate audio streams
-    const currentTrack = (audioEl.srcObject && audioEl.srcObject.getAudioTracks().length > 0)
-      ? audioEl.srcObject.getAudioTracks()[0]
-      : null;
-
-    if (!currentTrack || currentTrack.id !== track.id) {
-      const mediaStream = (stream && stream.getAudioTracks().length > 0) ? stream : new MediaStream([track]);
+    const mediaStream = (stream && stream.getAudioTracks().length > 0) ? stream : new MediaStream([track]);
+    if (audioEl.srcObject !== mediaStream) {
       audioEl.srcObject = mediaStream;
     }
 
-    audioEl.muted = state.media.isDeafened;
-    audioEl.volume = 1.0;
+    const playAudio = () => {
+      audioEl.muted = state.media.isDeafened;
+      audioEl.volume = 1.0;
+      const playPromise = audioEl.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => {
+          console.warn(`[Audio] Autoplay blocked for peer ${peerId}:`, e);
+          const unlockBanner = document.getElementById('audioUnlockPrompt');
+          if (unlockBanner) unlockBanner.style.display = 'flex';
 
-    const playPromise = audioEl.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(e => {
-        console.warn(`[Audio] Autoplay blocked for peer ${peerId}:`, e);
-        // Show prompt so user on mobile can unlock by tapping anywhere
-        const unlockBanner = document.getElementById('audioUnlockPrompt');
-        if (unlockBanner) unlockBanner.style.display = 'flex';
+          const unlock = () => {
+            state.media.unlockAudioPlayback();
+            document.removeEventListener('click', unlock);
+            document.removeEventListener('touchstart', unlock);
+          };
+          document.addEventListener('click', unlock, { once: true, passive: true });
+          document.addEventListener('touchstart', unlock, { once: true, passive: true });
+        });
+      }
+    };
 
-        const unlock = () => {
-          state.media.unlockAudioPlayback();
-          document.removeEventListener('click', unlock);
-          document.removeEventListener('touchstart', unlock);
-        };
-        document.addEventListener('click', unlock, { once: true, passive: true });
-        document.addEventListener('touchstart', unlock, { once: true, passive: true });
-      });
-    }
+    playAudio();
+
+    // Ensure audio plays as soon as first media packets arrive over the network
+    track.onunmute = () => {
+      console.log(`[Audio] Remote track unmuted from peer ${peerId}`);
+      playAudio();
+    };
   } else if (track.kind === 'video') {
     const videoEl = document.getElementById(`video-${peerId}`);
     if (videoEl) {
