@@ -462,8 +462,28 @@ async function startServer() {
     }
   }, 4000);
 
+  const os = require('os');
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 RootMe Talk server running on http://0.0.0.0:${PORT}`);
+    let localIp = 'localhost';
+    try {
+      const ifaces = os.networkInterfaces();
+      for (const name of Object.keys(ifaces)) {
+        for (const iface of ifaces[name]) {
+          if (iface.family === 'IPv4' && !iface.internal) {
+            localIp = iface.address;
+            break;
+          }
+        }
+      }
+    } catch (e) {}
+
+    console.log(`\n======================================================`);
+    console.log(`🚀 RootMe Talk server running!`);
+    console.log(`👉 Local:   http://localhost:${PORT}`);
+    console.log(`📱 Phone:   http://${localIp}:${PORT}`);
+    console.log(`🔒 Mobile Mic: Mobile browsers require HTTPS for microphone.`);
+    console.log(`   To test with phone mic, run: npm run tunnel`);
+    console.log(`======================================================\n`);
   });
 }
 

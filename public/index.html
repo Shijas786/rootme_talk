@@ -1202,11 +1202,39 @@
     </div>
   </dialog>
 
+  <!-- Floating Audio Unlock Banner for Mobile Browsers -->
+  <div id="audioUnlockPrompt" class="audio-unlock-banner" style="display: none;" role="button" aria-label="Tap to enable audio">
+    <span>🔊 Tap anywhere to enable room audio</span>
+  </div>
+
+  <!-- Microphone & HTTPS Helper Modal -->
+  <dialog class="custom-dialog custom-dialog-sm" id="micHelpModal">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h3>🎙️ Microphone on Mobile</h3>
+        <button class="btn btn-ghost btn-sm dialog-close-btn" id="closeMicHelpModalBtn">✕</button>
+      </div>
+      <div class="dialog-body" style="padding: 16px 0; font-size: 0.88rem; line-height: 1.5; color: var(--text-secondary);">
+        <p style="margin-bottom: 12px;">Mobile browsers (iOS Safari & Android Chrome) disable microphone and camera APIs when connected over plain <code>http://</code> (such as local IP <code>http://192.168.x.x:3000</code>).</p>
+        <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px;">
+          <strong style="color: var(--white); display: block; margin-bottom: 6px;">⚡ Easy Fix for Local Mobile Testing:</strong>
+          <span>Run Cloudflare Tunnel on your Mac:</span>
+          <pre style="background: var(--bg-main); padding: 8px; border-radius: 4px; margin-top: 6px; font-size: 0.82rem; color: #a5b4fc; overflow-x: auto;">npm run tunnel</pre>
+          <span style="display: block; margin-top: 6px; font-size: 0.8rem; color: var(--text-dim);">This gives you a free, instant <code>https://...trycloudflare.com</code> link that unlocks mic access on your phone!</span>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-dim);">When deployed to Railway or any HTTPS domain, microphone permissions work out of the box.</p>
+      </div>
+      <div class="dialog-footer" style="display: flex; justify-content: flex-end;">
+        <button class="btn btn-primary btn-sm" id="gotItMicHelpBtn">Got it</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Floating Toast Notifications Container -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- Persistent WebRTC Remote Audio Elements Container -->
-  <div id="remoteAudioContainer" style="display: none;" aria-hidden="true"></div>
+  <!-- Persistent WebRTC Remote Audio Elements Container (Must be in render tree for iOS/Android playback, but off-screen) -->
+  <div id="remoteAudioContainer" class="remote-audio-container" aria-hidden="true"></div>
 
   <!-- Scripts -->
   <script src="/js/ai-partner.js"></script>

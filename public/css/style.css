@@ -4263,4 +4263,52 @@ p, .hero-subtitle, .speaker-speech-bubble, .icebreaker-prompt-text {
   background: var(--gray-200);
 }
 
+/* Persistent WebRTC Remote Audio Elements Container (Must be in render tree for iOS/Android playback, but off-screen) */
+.remote-audio-container {
+  position: fixed !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0.001 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  z-index: -999 !important;
+}
+
+/* Floating Audio Unlock Banner for Mobile Autoplay Policy */
+.audio-unlock-banner {
+  position: fixed;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 41, 59, 0.96);
+  border: 1px solid rgba(129, 140, 248, 0.6);
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: audioPromptPulse 2s infinite ease-in-out;
+}
+
+@keyframes audioPromptPulse {
+  0%, 100% {
+    transform: translateX(-50%) scale(1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 10px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    transform: translateX(-50%) scale(1.04);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 22px rgba(99, 102, 241, 0.6);
+  }
+}
+
 

@@ -1,7 +1,7 @@
 /**
  * WebRTC and Audio Engine for RootMe Talk
  * Handles Peer Connections, Media Streams, Screen Sharing & Web Audio API Visualizer
- * Fully hardened with W3C Perfect Negotiation, ICE candidate queuing, and responsive speaking detection
+ * Fully hardened with W3C Perfect Negotiation, TURN relay traversal, mobile autoplay unlock, and resilient microphone initialization
  */
 class MediaManager {
   constructor(socket) {
@@ -16,6 +16,9 @@ class MediaManager {
     this.isScreenSharing = false;
     this.isDeafened = false;
 
+    this.hasRealAudio = false;
+    this.micError = null;
+
     // Web Audio Analyzer for speaking indicators
     this.audioCtx = null;
     this.analyser = null;
@@ -23,68 +26,173 @@ class MediaManager {
     this.speakingCheckInterval = null;
     this.isSpeaking = false;
 
-    // Global STUN Servers for reliable cross-network WebRTC NAT traversal
+    // Redundant STUN + TURN Relay Servers for guaranteed cross-network / mobile NAT traversal
     this.rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' }
+        { urls: 'stun:stun4.l.google.com:19302' },
+        { urls: 'stun:openrelay.metered.ca:80' },
+        {
+          urls: [
+            'turn:openrelay.metered.ca:80',
+            'turn:openrelay.metered.ca:443',
+            'turn:openrelay.metered.ca:443?transport=tcp'
+          ],
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
       ]
     };
 
-    // Auto resume audio context on any user interaction
-    const resumeAudio = () => {
-      if (this.audioCtx && this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume().catch(() => {});
-      }
+    // Auto resume audio context & unlock remote audio on user interaction
+    const unlockUserAudio = () => {
+      this.unlockAudioPlayback();
     };
-    document.addEventListener('click', resumeAudio, { passive: true });
-    document.addEventListener('touchstart', resumeAudio, { passive: true });
+    document.addEventListener('click', unlockUserAudio, { passive: true });
+    document.addEventListener('touchstart', unlockUserAudio, { passive: true });
 
     this.setupSocketSignaling();
   }
 
+  // Unlocks audio context and remote playback on mobile browsers
+  unlockAudioPlayback() {
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().catch(() => {});
+    }
+    const audioTags = document.querySelectorAll('audio.remote-audio, #remoteAudioContainer audio');
+    audioTags.forEach(a => {
+      if (a.paused && a.srcObject) {
+        a.play().catch(() => {});
+      }
+    });
+    const prompt = document.getElementById('audioUnlockPrompt');
+    if (prompt) prompt.style.display = 'none';
+  }
+
   // Request user mic & optional camera
   async initLocalMedia(video = false) {
+    const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const isSecure = window.isSecureContext || isLocalhost;
+
+    // Mobile browsers (iOS Safari & Android Chrome) strictly require HTTPS for getUserMedia
+    if (!isSecure) {
+      const msg = 'Microphone requires HTTPS on mobile devices. (Access via https:// or run an HTTPS tunnel)';
+      console.warn('[WebRTC]', msg);
+      this.micError = 'insecure_context';
+      this.hasRealAudio = false;
+      if (this.onMicPermissionError) {
+        this.onMicPermissionError(this.micError, msg);
+      }
+      this.localStream = this.createSilentAudioStream();
+      return this.localStream;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const msg = 'Media devices API is not supported or permitted on this connection.';
+      console.warn('[WebRTC]', msg);
+      this.micError = 'not_supported';
+      this.hasRealAudio = false;
+      if (this.onMicPermissionError) {
+        this.onMicPermissionError(this.micError, msg);
+      }
+      this.localStream = this.createSilentAudioStream();
+      return this.localStream;
+    }
+
     try {
       if (this.localStream) {
         this.stopLocalMedia();
       }
 
-      const constraints = {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        },
-        video: video ? { width: { ideal: 640 }, height: { ideal: 480 } } : false
-      };
+      // Try with full constraints first
+      let stream = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
+          video: video ? { width: { ideal: 640 }, height: { ideal: 480 } } : false
+        });
+      } catch (constraintErr) {
+        console.warn('[WebRTC] Full constraints failed, attempting fallback { audio: true }:', constraintErr.message);
+        // Fallback for strict mobile devices
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: video ? true : false
+        });
+      }
 
-      this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      this.localStream = stream;
+      this.hasRealAudio = true;
+      this.micError = null;
       this.isVideoEnabled = video;
+      this.isMicMuted = false;
 
       // Start Web Audio API Volume Analyzer
       this.startAudioAnalysis();
 
+      // If peer connections were already established, attach active tracks now
+      this.addLocalTracksToAllPeers();
+
+      if (this.onMicReady) {
+        this.onMicReady();
+      }
+
       return this.localStream;
     } catch (err) {
-      console.warn('Microphone/camera access note:', err.message);
-      // Fallback: create silent audio track so WebRTC can still connect without crash
+      console.warn('[WebRTC] Microphone/camera access note:', err.name, err.message);
+      this.micError = err.name || 'permission_denied';
+      this.hasRealAudio = false;
+      if (this.onMicPermissionError) {
+        this.onMicPermissionError(this.micError, err.message);
+      }
+      // Fallback: create silent audio track so WebRTC can still connect without crashing
       this.localStream = this.createSilentAudioStream();
       return this.localStream;
     }
   }
 
+  // Create an active dummy audio stream (via GainNode at 0) so WebRTC SDP includes audio m-line cleanly
   createSilentAudioStream() {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const dst = osc.connect(ctx.createMediaStreamDestination());
-    osc.start();
-    const track = dst.stream.getAudioTracks()[0];
-    track.enabled = false;
-    return new MediaStream([track]);
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const dst = ctx.createMediaStreamDestination();
+      osc.connect(gain);
+      gain.connect(dst);
+      osc.start();
+      const track = dst.stream.getAudioTracks()[0];
+      if (track) track.enabled = true;
+      return dst.stream;
+    } catch (e) {
+      return new MediaStream();
+    }
+  }
+
+  // Update existing peer connections with newly acquired audio tracks
+  addLocalTracksToAllPeers() {
+    if (!this.localStream) return;
+    const tracks = this.localStream.getTracks();
+    this.peers.forEach((pc) => {
+      const senders = pc.getSenders();
+      tracks.forEach(track => {
+        const sender = senders.find(s => s.track && s.track.kind === track.kind);
+        if (sender) {
+          sender.replaceTrack(track).catch(() => {});
+        } else {
+          try {
+            pc.addTrack(track, this.localStream);
+          } catch (e) {}
+        }
+      });
+    });
   }
 
   startAudioAnalysis() {
@@ -110,7 +218,7 @@ class MediaManager {
 
       clearInterval(this.speakingCheckInterval);
       this.speakingCheckInterval = setInterval(() => {
-        if (this.isMicMuted || !this.analyser) {
+        if (this.isMicMuted || !this.analyser || !this.hasRealAudio) {
           if (this.isSpeaking) this.setSpeakingState(false);
           return;
         }
@@ -129,7 +237,7 @@ class MediaManager {
         }
         const average = sum / bufferLength;
 
-        // Ultra-responsive speaking detection: triggered by low volume speech or peaks
+        // Ultra-responsive speaking detection
         const currentlySpeaking = (average > 7 || peak > 24);
         if (currentlySpeaking !== this.isSpeaking) {
           this.setSpeakingState(currentlySpeaking);
@@ -151,7 +259,17 @@ class MediaManager {
   }
 
   // Toggle Microphone Mute
-  toggleMic() {
+  async toggleMic() {
+    // If real mic was not captured yet, attempt capture on user tap
+    if (!this.hasRealAudio && !this.micError) {
+      await this.initLocalMedia();
+      if (this.hasRealAudio) {
+        this.isMicMuted = false;
+        if (this.socket) this.socket.emit('peer:state-change', { isMuted: false });
+        return true;
+      }
+    }
+
     if (!this.localStream) return false;
     const audioTrack = this.localStream.getAudioTracks()[0];
     if (audioTrack) {
@@ -174,21 +292,18 @@ class MediaManager {
   async toggleVideo() {
     try {
       if (this.isVideoEnabled) {
-        // Stop video tracks
         this.localStream.getVideoTracks().forEach(t => {
           t.stop();
           this.localStream.removeTrack(t);
         });
         this.isVideoEnabled = false;
 
-        // Update peers
         this.peers.forEach(pc => {
           const senders = pc.getSenders();
           const videoSender = senders.find(s => s.track && s.track.kind === 'video');
           if (videoSender) pc.removeTrack(videoSender);
         });
       } else {
-        // Request video stream
         const vStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } }
         });
@@ -196,7 +311,6 @@ class MediaManager {
         this.localStream.addTrack(newTrack);
         this.isVideoEnabled = true;
 
-        // Replace or add track on peers
         this.peers.forEach(pc => {
           pc.addTrack(newTrack, this.localStream);
         });
@@ -253,7 +367,6 @@ class MediaManager {
   // Toggle Deafen (mute incoming audio)
   toggleDeafen() {
     this.isDeafened = !this.isDeafened;
-    // Mute or unmute all remote audio tags
     const audioTags = document.querySelectorAll('audio.remote-audio, #remoteAudioContainer audio');
     audioTags.forEach(a => {
       a.muted = this.isDeafened;
@@ -355,10 +468,12 @@ class MediaManager {
     const pc = new RTCPeerConnection(this.rtcConfig);
     this.peers.set(peerId, pc);
 
-    // Add local tracks
+    // Add local tracks if available
     if (this.localStream) {
       this.localStream.getTracks().forEach(track => {
-        pc.addTrack(track, this.localStream);
+        try {
+          pc.addTrack(track, this.localStream);
+        } catch (e) {}
       });
     }
 
@@ -374,6 +489,7 @@ class MediaManager {
 
     // Handle Remote Track Received with unified stream fallback
     pc.ontrack = (event) => {
+      console.log(`[WebRTC] Received remote track (${event.track.kind}) from peer: ${peerId}`);
       let stream = (event.streams && event.streams[0]) ? event.streams[0] : null;
       if (!stream) {
         stream = new MediaStream([event.track]);
@@ -385,6 +501,16 @@ class MediaManager {
 
     pc.onconnectionstatechange = () => {
       console.log(`[WebRTC] Peer ${peerId} connection state: ${pc.connectionState}`);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log(`[WebRTC] Peer ${peerId} ICE connection state: ${pc.iceConnectionState}`);
+      if (pc.iceConnectionState === 'failed') {
+        console.warn(`[WebRTC] ICE failed for peer ${peerId}, attempting ICE restart...`);
+        try {
+          pc.restartIce();
+        } catch (e) {}
+      }
     };
 
     return pc;
@@ -434,6 +560,8 @@ class MediaManager {
     this.peers.forEach(pc => pc.close());
     this.peers.clear();
     this.candidateQueue.clear();
+    this.hasRealAudio = false;
+    this.micError = null;
   }
 }
 

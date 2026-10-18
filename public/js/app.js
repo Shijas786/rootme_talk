@@ -323,13 +323,31 @@ function initSocket() {
     attachRemoteTrackToTile(peerId, stream, track);
   };
 
+  // Microphone permission error & readiness callbacks
+  state.media.onMicPermissionError = (errorType, message) => {
+    updateMicButtonUI(false, true);
+    if (errorType === 'insecure_context') {
+      const modal = document.getElementById('micHelpModal');
+      if (modal) modal.showModal();
+    } else if (errorType === 'NotAllowedError' || errorType === 'PermissionDeniedError') {
+      showToast('⚠️ Microphone permission was denied. Please allow mic in browser settings.', 'error');
+    } else {
+      showToast(`⚠️ Microphone note: ${message || 'Device not accessible'}`, 'error');
+    }
+  };
+
+  state.media.onMicReady = () => {
+    updateMicButtonUI(true, false);
+    showToast('Microphone ready! 🎙️', 'success');
+  };
+
   // Local speaking state callback
   state.media.onLocalSpeakingChanged = (isSpeaking) => {
     if (state.currentRoom) {
       updateParticipantTileState(state.socket.id, { isSpeaking });
       const dockMicBtn = document.getElementById('dockMicBtn');
       if (dockMicBtn) {
-        if (isSpeaking && !state.media.isMicMuted) {
+        if (isSpeaking && !state.media.isMicMuted && state.media.hasRealAudio) {
           dockMicBtn.classList.add('speaking-live');
         } else {
           dockMicBtn.classList.remove('speaking-live');
@@ -738,8 +756,12 @@ function attemptJoinRoom(roomId, password = '') {
     state.currentRoom = res.room;
     enterInRoomView(res.room);
 
+    // Unlock audio context on user gesture immediately
+    state.media.unlockAudioPlayback();
+
     // Initialize local microphone
     await state.media.initLocalMedia(false);
+    updateMicButtonUI(state.media.hasRealAudio, Boolean(state.media.micError));
 
     // Connect to existing peers via WebRTC
     if (res.existingPeers && res.existingPeers.length) {
@@ -798,8 +820,10 @@ function enterInRoomView(room) {
     state.whiteboard.initCanvasSize();
   }
 
-  // Reset controls
-  updateMicButtonUI(true);
+  // Reset controls with actual microphone status
+  const isMicAvailable = state.media.hasRealAudio && !state.media.isMicMuted;
+  const isMicBlocked = Boolean(state.media.micError);
+  updateMicButtonUI(isMicAvailable, isMicBlocked);
   updateVideoButtonUI(false);
 
   showToast(`Joined ${room.title}! Say hi 👋`, 'success');
@@ -896,7 +920,7 @@ function attachRemoteTrackToTile(peerId, stream, track) {
     if (!container) {
       container = document.createElement('div');
       container.id = 'remoteAudioContainer';
-      container.style.display = 'none';
+      container.className = 'remote-audio-container';
       document.body.appendChild(container);
     }
     let audioEl = document.getElementById(`remote-audio-${peerId}`);
@@ -906,22 +930,32 @@ function attachRemoteTrackToTile(peerId, stream, track) {
       audioEl.className = 'remote-audio';
       audioEl.autoplay = true;
       audioEl.playsInline = true;
+      audioEl.setAttribute('playsinline', 'true');
+      audioEl.setAttribute('webkit-playsinline', 'true');
       container.appendChild(audioEl);
     }
     const mediaStream = (stream && stream.getAudioTracks().length > 0) ? stream : new MediaStream([track]);
-    audioEl.srcObject = mediaStream;
+    if (audioEl.srcObject !== mediaStream) {
+      audioEl.srcObject = mediaStream;
+    }
     audioEl.muted = state.media.isDeafened;
+    audioEl.volume = 1.0;
+
     const playPromise = audioEl.play();
     if (playPromise !== undefined) {
       playPromise.catch(e => {
-        console.warn(`[Audio] Autoplay delayed for peer ${peerId}:`, e);
+        console.warn(`[Audio] Autoplay blocked for peer ${peerId}:`, e);
+        // Show prompt so user on mobile can unlock by tapping anywhere
+        const unlockBanner = document.getElementById('audioUnlockPrompt');
+        if (unlockBanner) unlockBanner.style.display = 'flex';
+
         const unlock = () => {
-          audioEl.play().catch(() => {});
+          state.media.unlockAudioPlayback();
           document.removeEventListener('click', unlock);
           document.removeEventListener('touchstart', unlock);
         };
-        document.addEventListener('click', unlock, { once: true });
-        document.addEventListener('touchstart', unlock, { once: true });
+        document.addEventListener('click', unlock, { once: true, passive: true });
+        document.addEventListener('touchstart', unlock, { once: true, passive: true });
       });
     }
   } else if (track.kind === 'video') {
@@ -1469,9 +1503,11 @@ function leaveRoom() {
   state.socket.emit('room:leave');
   state.currentRoom = null;
 
-  // Clear all remote audio tags
+  // Clear all remote audio tags & hide prompt
   const audioContainer = document.getElementById('remoteAudioContainer');
   if (audioContainer) audioContainer.innerHTML = '';
+  const unlockBanner = document.getElementById('audioUnlockPrompt');
+  if (unlockBanner) unlockBanner.style.display = 'none';
 
   const dockMicBtn = document.getElementById('dockMicBtn');
   if (dockMicBtn) dockMicBtn.classList.remove('speaking-live');
@@ -1484,13 +1520,31 @@ function leaveRoom() {
 }
 
 // Microphone & Camera Dock UI Toggles
-function updateMicButtonUI(isOn) {
-  document.getElementById('iconMicOn').style.display = isOn ? 'block' : 'none';
-  document.getElementById('iconMicOff').style.display = isOn ? 'none' : 'block';
-  document.getElementById('dockMicLabel').textContent = isOn ? 'Mic On' : 'Muted';
-  document.getElementById('dockMicBtn').classList.toggle('danger', !isOn);
-  if (!isOn) {
-    document.getElementById('dockMicBtn').classList.remove('speaking-live');
+function updateMicButtonUI(isOn, isBlocked = false) {
+  const iconMicOn = document.getElementById('iconMicOn');
+  const iconMicOff = document.getElementById('iconMicOff');
+  const dockMicLabel = document.getElementById('dockMicLabel');
+  const dockMicBtn = document.getElementById('dockMicBtn');
+
+  if (isBlocked) {
+    if (iconMicOn) iconMicOn.style.display = 'none';
+    if (iconMicOff) iconMicOff.style.display = 'block';
+    if (dockMicLabel) dockMicLabel.textContent = 'Mic Blocked';
+    if (dockMicBtn) {
+      dockMicBtn.classList.add('danger');
+      dockMicBtn.classList.remove('speaking-live');
+    }
+    return;
+  }
+
+  if (iconMicOn) iconMicOn.style.display = isOn ? 'block' : 'none';
+  if (iconMicOff) iconMicOff.style.display = isOn ? 'none' : 'block';
+  if (dockMicLabel) dockMicLabel.textContent = isOn ? 'Mic On' : 'Muted';
+  if (dockMicBtn) {
+    dockMicBtn.classList.toggle('danger', !isOn);
+    if (!isOn) {
+      dockMicBtn.classList.remove('speaking-live');
+    }
   }
 }
 
@@ -1950,9 +2004,23 @@ function setupUIEventListeners() {
   });
 
   // In-Room Bottom Dock Controls
-  document.getElementById('dockMicBtn').addEventListener('click', () => {
-    const isMicOn = state.media.toggleMic();
-    updateMicButtonUI(isMicOn);
+  document.getElementById('dockMicBtn').addEventListener('click', async () => {
+    if (state.media.micError) {
+      if (state.media.micError === 'insecure_context') {
+        const modal = document.getElementById('micHelpModal');
+        if (modal) modal.showModal();
+        return;
+      }
+      showToast('Requesting microphone permission...', 'info');
+      await state.media.initLocalMedia();
+      if (state.media.hasRealAudio) {
+        updateMicButtonUI(true, false);
+        showToast('Microphone connected! 🎙️', 'success');
+      }
+      return;
+    }
+    const isMicOn = await state.media.toggleMic();
+    updateMicButtonUI(isMicOn, false);
     showToast(isMicOn ? 'Microphone unmuted' : 'Microphone muted', 'info');
   });
 
@@ -2200,14 +2268,37 @@ function setupUIEventListeners() {
     });
   }
 
+  // Mobile Audio Unlock Banner tap listener
+  const unlockBanner = document.getElementById('audioUnlockPrompt');
+  if (unlockBanner) {
+    unlockBanner.addEventListener('click', () => {
+      state.media.unlockAudioPlayback();
+      showToast('Audio unlocked 🔊', 'success');
+    });
+    unlockBanner.addEventListener('touchstart', () => {
+      state.media.unlockAudioPlayback();
+      showToast('Audio unlocked 🔊', 'success');
+    });
+  }
+
+  // Mic Help Modal close listeners
+  const closeMicHelpBtn = document.getElementById('closeMicHelpModalBtn');
+  const gotItMicHelpBtn = document.getElementById('gotItMicHelpBtn');
+  const micHelpModal = document.getElementById('micHelpModal');
+  if (closeMicHelpBtn && micHelpModal) {
+    closeMicHelpBtn.addEventListener('click', () => micHelpModal.close());
+  }
+  if (gotItMicHelpBtn && micHelpModal) {
+    gotItMicHelpBtn.addEventListener('click', () => micHelpModal.close());
+  }
+
   // Global Keyboard Shortcuts
   window.addEventListener('keydown', (e) => {
     // Only if not focused in an input
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
 
     if (e.key === 'm' || e.key === 'M') {
-      const isMicOn = state.media.toggleMic();
-      updateMicButtonUI(isMicOn);
+      state.media.toggleMic().then(isMicOn => updateMicButtonUI(isMicOn, Boolean(state.media.micError)));
     } else if (e.key === 'v' || e.key === 'V') {
       state.media.toggleVideo().then(isOn => updateVideoButtonUI(isOn));
     }
