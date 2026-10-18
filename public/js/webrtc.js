@@ -97,13 +97,19 @@ class MediaManager {
       }
 
       // Try with full constraints first
+      // Full-duplex Acoustic Echo Cancellation and Noise Suppression constraints
       let stream = null;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            autoGainControl: true
+            autoGainControl: true,
+            googEchoCancellation: true,
+            googAutoGainControl: true,
+            googNoiseSuppression: true,
+            googHighpassFilter: true,
+            googTypingNoiseDetection: true
           },
           video: video ? { width: { ideal: 640 }, height: { ideal: 480 } } : false
         });
@@ -509,7 +515,10 @@ class MediaManager {
   async connectToPeer(peerId) {
     try {
       const pc = this.createPeerConnection(peerId);
-      const offer = await pc.createOffer();
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      });
       await pc.setLocalDescription(offer);
 
       this.socket.emit('signal:offer', {

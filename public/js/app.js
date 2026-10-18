@@ -863,8 +863,8 @@ function renderParticipants() {
     const isMe = p.id === state.socket.id;
     return `
       <div class="participant-tile ${p.isSpeaking ? 'is-speaking' : ''}" id="tile-${p.id}">
-        <!-- Remote Video element if camera is on -->
-        <video class="participant-video-stream" id="video-${p.id}" autoplay playsinline style="${p.isVideoOn ? '' : 'display:none;'}"></video>
+        <!-- Remote Video element if camera is on (muted to prevent audio doubling/echo) -->
+        <video class="participant-video-stream" id="video-${p.id}" autoplay playsinline muted style="${p.isVideoOn ? '' : 'display:none;'}"></video>
 
         <div class="peer-indicators">
           <div class="status-icon-pill ${p.isMuted ? 'muted' : ''} ${p.isSpeaking && !p.isMuted ? 'speaking-live' : ''}" id="mic-status-${p.id}" title="${p.isMuted ? 'Muted' : 'Mic active'}">
@@ -926,6 +926,19 @@ function updateParticipantTileState(peerId, updates) {
 }
 
 function attachRemoteTrackToTile(peerId, stream, track) {
+  // CRITICAL ECHO GUARD 1: Never attach or play back local user's own audio
+  if (!peerId || peerId === state.socket?.id) {
+    return;
+  }
+
+  // CRITICAL ECHO GUARD 2: If track belongs to local microphone stream, reject playback
+  if (state.media.localStream) {
+    const isLocalTrack = state.media.localStream.getTracks().some(t => t.id === track.id);
+    if (isLocalTrack) {
+      return;
+    }
+  }
+
   if (track.kind === 'audio') {
     let container = document.getElementById('remoteAudioContainer');
     if (!container) {
@@ -945,10 +958,17 @@ function attachRemoteTrackToTile(peerId, stream, track) {
       audioEl.setAttribute('webkit-playsinline', 'true');
       container.appendChild(audioEl);
     }
-    const mediaStream = (stream && stream.getAudioTracks().length > 0) ? stream : new MediaStream([track]);
-    if (audioEl.srcObject !== mediaStream) {
+
+    // Only assign srcObject if track is not already playing to prevent duplicate audio streams
+    const currentTrack = (audioEl.srcObject && audioEl.srcObject.getAudioTracks().length > 0)
+      ? audioEl.srcObject.getAudioTracks()[0]
+      : null;
+
+    if (!currentTrack || currentTrack.id !== track.id) {
+      const mediaStream = (stream && stream.getAudioTracks().length > 0) ? stream : new MediaStream([track]);
       audioEl.srcObject = mediaStream;
     }
+
     audioEl.muted = state.media.isDeafened;
     audioEl.volume = 1.0;
 
@@ -972,6 +992,7 @@ function attachRemoteTrackToTile(peerId, stream, track) {
   } else if (track.kind === 'video') {
     const videoEl = document.getElementById(`video-${peerId}`);
     if (videoEl) {
+      videoEl.muted = true; // Crucial: video stream MUST remain muted so audio is only emitted once via audioEl
       videoEl.srcObject = stream;
       videoEl.style.display = 'block';
       videoEl.play().catch(() => {});
@@ -2312,6 +2333,13 @@ function setupUIEventListeners() {
       state.media.toggleMic().then(isMicOn => updateMicButtonUI(isMicOn, Boolean(state.media.micError)));
     } else if (e.key === 'v' || e.key === 'V') {
       state.media.toggleVideo().then(isOn => updateVideoButtonUI(isOn));
+    }
+  });
+
+  // Cleanup media on page unload / refresh
+  window.addEventListener('beforeunload', () => {
+    if (state.media) {
+      state.media.stopLocalMedia();
     }
   });
 }
