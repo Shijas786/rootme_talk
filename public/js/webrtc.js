@@ -74,26 +74,15 @@ class MediaManager {
 
   // Request user mic & optional camera
   async initLocalMedia(video = false) {
-    const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const isSecure = window.isSecureContext || isLocalhost;
-
-    // Mobile browsers (iOS Safari & Android Chrome) strictly require HTTPS for getUserMedia
-    if (!isSecure) {
-      const msg = 'Microphone requires HTTPS on mobile devices. (Access via https:// or run an HTTPS tunnel)';
+    // If navigator.mediaDevices.getUserMedia is unavailable (e.g. mobile on plain HTTP)
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      const isSecure = window.isSecureContext || isLocalhost;
+      const msg = !isSecure
+        ? 'Microphone requires HTTPS on remote/mobile devices. (Access via https:// or run an HTTPS tunnel)'
+        : 'Media devices API is not supported in this browser.';
       console.warn('[WebRTC]', msg);
-      this.micError = 'insecure_context';
-      this.hasRealAudio = false;
-      if (this.onMicPermissionError) {
-        this.onMicPermissionError(this.micError, msg);
-      }
-      this.localStream = this.createSilentAudioStream();
-      return this.localStream;
-    }
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      const msg = 'Media devices API is not supported or permitted on this connection.';
-      console.warn('[WebRTC]', msg);
-      this.micError = 'not_supported';
+      this.micError = !isSecure ? 'insecure_context' : 'not_supported';
       this.hasRealAudio = false;
       if (this.onMicPermissionError) {
         this.onMicPermissionError(this.micError, msg);
@@ -146,7 +135,7 @@ class MediaManager {
       return this.localStream;
     } catch (err) {
       console.warn('[WebRTC] Microphone/camera access note:', err.name, err.message);
-      this.micError = err.name || 'permission_denied';
+      this.micError = (err.name === 'SecurityError') ? 'insecure_context' : (err.name || 'permission_denied');
       this.hasRealAudio = false;
       if (this.onMicPermissionError) {
         this.onMicPermissionError(this.micError, err.message);

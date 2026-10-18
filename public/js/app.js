@@ -754,7 +754,11 @@ function attemptJoinRoom(roomId, password = '') {
     if (pwdModal && pwdModal.open) pwdModal.close();
 
     state.currentRoom = res.room;
-    enterInRoomView(res.room);
+    try {
+      enterInRoomView(res.room);
+    } catch (err) {
+      console.error('[Room] enterInRoomView error:', err);
+    }
 
     // Unlock audio context on user gesture immediately
     state.media.unlockAudioPlayback();
@@ -787,6 +791,13 @@ function triggerSurpriseMatch() {
   const pick = availableRooms[Math.floor(Math.random() * availableRooms.length)];
   showToast(`Matched you into "${pick.title}"! Joining... 🎲`, 'success');
   attemptJoinRoom(pick.id);
+}
+
+// Render Vocab Cards helper
+function renderVocabCards() {
+  if (window.renderNotebookUI && document.getElementById('panelNotebook') && document.getElementById('panelNotebook').style.display !== 'none') {
+    window.renderNotebookUI('panel');
+  }
 }
 
 // Enter Room View UI Transition
